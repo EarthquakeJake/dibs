@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0E1C2B">
+<title>Dibs</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230E1C2B'/%3E%3Ctext x='32' y='44' font-family='Arial' font-weight='700' font-size='34' text-anchor='middle' fill='%23F3C000'%3ED%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+
+<script>
+/* ==================== SETTINGS — edit these ==================== */
+const CONFIG = {
+  API_URL: 'https://script.google.com/macros/s/AKfycbwXDgkowfKgHum5fApYkPs82Zs_Me6UMUEXDQ2GP3qJxgMfF1LQSrLCPe2bfnGnBGnmXw/exec', // your Apps Script web app. Empty = demo mode.
+  SITE_NAME: 'Dibs',
+  TAGLINE: 'Everything here needs a new home. Tap an item and call dibs — first come, first served.',
+  OWNER_NAME: 'Jake',     // used in messages like "Jake has been notified"
+  CURRENCY: '€',
+  REFRESH_SECONDS: 30,    // how often the page checks for new claims
+};
+/* =============================================================== */
+</script>
+
+<style>
+:root{
+  --navy:#0E1C2B; --teal:#005858; --green:#00A296; --gold:#F3C000;
+  --bg:#F5F3EE; --surface:#FFFFFF; --surface-2:#ECE8DF; --text:#0E1C2B; --muted:#5B6672; --line:#E2DED4;
+  --primary:#005858; --primary-hover:#004646; --on-primary:#fff;
+  --claimed-bg:#FFF1B8; --claimed-ink:#5C4700; --gone-bg:#E4E4E4; --gone-ink:#4F4F4F;
+  --new-bg:#D7F2EE; --new-ink:#00534C; --danger:#B42318;
+  --radius:16px; --shadow:0 1px 2px rgba(14,28,43,.05),0 6px 20px rgba(14,28,43,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0A1520; --surface:#112131; --surface-2:#18304A; --text:#E7EDF2; --muted:#93A4B3; --line:#21384D;
+    --primary:#00A296; --primary-hover:#00B8AA; --on-primary:#04201D;
+    --claimed-bg:rgba(243,192,0,.18); --claimed-ink:#F7D34E; --gone-bg:rgba(255,255,255,.08); --gone-ink:#B7C2CB;
+    --new-bg:rgba(0,162,150,.2); --new-ink:#5FD8CC; --danger:#FF8A80;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100dvh}
+body:has(dialog[open]){overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+.mono{font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* buttons & inputs */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 16px;font-weight:500;line-height:1.2;white-space:nowrap;transition:background .15s,border-color .15s,transform .1s}
+.btn:hover{border-color:var(--muted)}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.primary:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+.btn.danger{color:var(--danger)}
+.btn.big{padding:14px 22px;font-size:17px;font-weight:700;width:100%}
+.btn:disabled{opacity:.6;cursor:default;transform:none}
+.btn.icon{padding:9px;border-radius:50%}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span{font-size:13px;font-weight:500;color:var(--muted)}
+.input,textarea.input,select.input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 13px;outline:none;transition:border-color .15s,box-shadow .15s}
+.input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 22%,transparent)}
+textarea.input{resize:vertical;min-height:84px}
+
+/* header */
+.top{padding-top:28px;padding-bottom:6px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:12px;background:var(--navy);color:var(--gold);display:grid;place-items:center;font-weight:700;font-size:22px;flex:none}
+@media (prefers-color-scheme:dark){.logo{background:#1B3550}}
+.top h1{font-size:clamp(28px,4.5vw,40px);margin:0;letter-spacing:-.025em;line-height:1.05}
+.tagline{color:var(--muted);margin:10px 0 0;max-width:62ch}
+.demo{margin:16px 0 0;padding:12px 14px;border-radius:12px;background:var(--claimed-bg);color:var(--claimed-ink);font-size:14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.demo b{font-weight:700}
+.demo .lnk{background:none;border:none;padding:0;color:inherit;text-decoration:underline;font-weight:500}
+.ownerbar{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;align-items:center}
+.ownerbar .who{font-size:13px;color:var(--muted);margin-right:auto;display:flex;align-items:center;gap:6px}
+.pill-owner{background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+@media (prefers-color-scheme:dark){.pill-owner{background:#1B3550}}
+
+/* toolbar */
+.toolbar{position:sticky;top:0;z-index:5;margin-top:18px;padding:12px 0 10px;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.trow{display:flex;gap:10px;align-items:center}
+.search{position:relative;flex:1;min-width:0}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search .input{padding-left:38px;border-radius:999px}
+.sort{width:auto;border-radius:999px;padding-right:30px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-top:10px;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:500;display:inline-flex;gap:6px;align-items:center}
+.chip .n{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
+.chip[aria-pressed=true]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.chip[aria-pressed=true] .n{color:inherit;opacity:.7}
+.chips.cats .chip{font-size:13px;padding:5px 11px}
+.sep{flex:none;width:1px;background:var(--line);margin:4px 4px}
+
+/* grid & cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;padding:20px 0 40px}
+@media (max-width:560px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+.card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(14,28,43,.06),0 12px 28px rgba(14,28,43,.1)}
+.card:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+.ph{position:relative;display:block;aspect-ratio:4/3;background:var(--surface-2);overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover;display:block;transition:filter .2s}
+.card.is-claimed .ph img{filter:saturate(.35) brightness(.9)}
+.card.is-gone{opacity:.55}
+.card.is-gone .ph img{filter:grayscale(1)}
+.noimg{width:100%;height:100%;display:grid;place-items:center;color:var(--muted)}
+.noimg svg{width:34px;height:34px;opacity:.5}
+.tag{position:absolute;left:8px;top:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.t-claimed{background:var(--gold);color:#3D2F00}
+.t-mine{background:var(--green);color:#fff}
+.t-gone{background:var(--gone-bg);color:var(--gone-ink)}
+.t-new{background:var(--surface);color:var(--new-ink)}
+.pcount{position:absolute;right:8px;bottom:8px;display:inline-flex;align-items:center;gap:4px;font:500 12px 'DM Mono',monospace;background:rgba(10,20,30,.62);color:#fff;padding:3px 7px;border-radius:999px}
+.pcount svg{width:13px;height:13px}
+.cbody{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px}
+.ctitle{font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cmeta{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:14px}
+.price{font-weight:700}
+.price.free{color:var(--primary)}
+.dims{color:var(--muted);font-size:12.5px}
+@media (max-width:560px){.cbody{padding:10px 11px 12px}.ctitle{font-size:14.5px}.cmeta{font-size:13px}}
+.empty{text-align:center;color:var(--muted);padding:60px 16px 80px}
+.empty svg{width:40px;height:40px;opacity:.5;margin-bottom:8px}
+.skeleton .ph{animation:pulse 1.2s ease-in-out infinite}
+.skeleton .bar{height:12px;border-radius:6px;background:var(--surface-2);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.5}}
+
+footer{border-top:1px solid var(--line);padding:18px 0 calc(40px + env(safe-area-inset-bottom));color:var(--muted);font-size:13px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+footer .lnk{background:none;border:none;padding:0;color:inherit;text-decoration:underline}
+.sync{display:inline-flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.dot.off{background:var(--danger)}
+
+.fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:6;width:58px;height:58px;border-radius:50%;border:none;background:var(--primary);color:var(--on-primary);box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;align-items:center;justify-content:center}
+.fab svg{width:26px;height:26px}
+@media (max-width:700px){.fab.on{display:flex}}
+
+/* gate */
+.gate{min-height:100dvh;display:grid;place-items:center;padding:24px 16px}
+.gate-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:32px 26px;box-shadow:var(--shadow);text-align:center}
+.gate-card .logo{margin:0 auto 14px;width:56px;height:56px;font-size:28px;border-radius:16px}
+.gate-card h1{margin:0 0 6px;font-size:28px;letter-spacing:-.02em}
+.gate-card p{color:var(--muted);margin:0 0 20px}
+.gate-card form{display:flex;flex-direction:column;gap:10px}
+.gate-card .input{text-align:center;font-size:18px;letter-spacing:.04em}
+.gate-err{color:var(--danger);min-height:1.4em;margin:12px 0 0!important;font-size:14px}
+.gate-hint{font-size:13px;margin-top:6px!important}
+
+/* dialogs */
+dialog{border:none;padding:0;background:var(--surface);color:var(--text);border-radius:22px;width:min(960px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.35);overscroll-behavior:contain}
+dialog.narrow{width:min(620px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(6,14,22,.58);backdrop-filter:blur(2px)}
+dialog[open]{animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.985)}}
+@media (max-width:700px){
+  dialog,dialog.narrow{width:100vw;max-width:100vw;max-height:94dvh;margin:auto 0 0;border-radius:22px 22px 0 0}
+  dialog[open]{animation:up .22s ease-out}
+  @keyframes up{from{transform:translateY(40px);opacity:.6}}
+}
+.dhead{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.dhead h2{margin:0;font-size:18px}
+.x{border:none;background:var(--surface-2);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none}
+.x.float{position:absolute;right:12px;top:12px;z-index:4;background:rgba(10,20,30,.55);color:#fff}
+
+/* detail */
+.detail{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);position:relative}
+@media (max-width:760px){.detail{grid-template-columns:1fr}}
+.gallery{background:#0B1520;display:flex;flex-direction:column;min-width:0;align-self:start}
+@media (min-width:761px){.gallery{align-self:stretch}.gmain{aspect-ratio:auto;flex:1;min-height:380px}}
+.gmain{position:relative;aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden;touch-action:pan-y;user-select:none}
+.gmain img{width:100%;height:100%;object-fit:contain;display:block}
+.gmain .noimg{color:#6C7C8A}
+.gnav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.88);color:#0E1C2B;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.gnav.prev{left:10px}.gnav.next{right:10px}
+.gcount{position:absolute;left:12px;bottom:10px;font:500 12px 'DM Mono',monospace;color:#fff;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:999px}
+.gthumbs{display:flex;gap:6px;padding:8px;overflow-x:auto;scrollbar-width:thin}
+.gthumb{flex:none;width:62px;height:48px;border-radius:8px;overflow:hidden;border:2px solid transparent;padding:0;background:#18293A;opacity:.6}
+.gthumb.on{border-color:var(--gold);opacity:1}
+.gthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.info{padding:24px 24px 28px;display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:760px){.info{padding:18px 16px 28px}}
+.badges{display:flex;flex-wrap:wrap;gap:6px}
+.badge{font-size:12px;font-weight:500;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--text)}
+.info h2{margin:0;font-size:clamp(22px,3vw,28px);letter-spacing:-.02em;line-height:1.15}
+.pricebig{font-size:22px;font-weight:700}
+.pricebig.free{color:var(--primary)}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14.5px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;overflow-wrap:anywhere}
+.desc{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.claimbox{border-radius:16px;padding:16px;background:var(--surface-2);display:flex;flex-direction:column;gap:12px;position:relative}
+.claimbox.claimed{background:var(--claimed-bg);color:var(--claimed-ink)}
+.claimbox.mine{background:var(--new-bg);color:var(--new-ink)}
+.claimbox.gone{background:var(--gone-bg);color:var(--gone-ink)}
+.claimbox h3{margin:0;font-size:17px;display:flex;align-items:center;gap:8px}
+.claimbox p{margin:0}
+.claimbox .small{font-size:13px;opacity:.85}
+.claimbox .note{background:color-mix(in srgb,var(--surface) 70%,transparent);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);white-space:pre-wrap}
+.owner-tools{border:1px dashed var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.owner-tools .lbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+
+/* editor */
+.eform{padding:18px 18px 0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+.eform .c6{grid-column:span 6}.eform .c3{grid-column:span 3}.eform .c2{grid-column:span 2}
+@media (max-width:560px){.eform .c3{grid-column:span 6}.eform .c2{grid-column:span 3}}
+.dimrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 82px;gap:8px}
+.dimrow label{position:relative}
+.dimrow label b{position:absolute;left:11px;top:50%;transform:translateY(-50%);font:500 13px 'DM Mono',monospace;color:var(--muted);pointer-events:none}
+.dimrow .input{padding-left:30px}
+.dimrow select.input{padding-left:10px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.pthumb{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--surface-2)}
+.pthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.pthumb .cover{position:absolute;left:5px;top:5px;font-size:10px;font-weight:700;background:var(--gold);color:#3D2F00;padding:2px 6px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.pthumb .pbtns{position:absolute;right:4px;top:4px;display:flex;gap:4px}
+.pthumb .pbtns button{width:26px;height:26px;border-radius:50%;border:none;background:rgba(10,20,30,.7);color:#fff;display:grid;place-items:center;padding:0}
+.pthumb .pbtns svg{width:14px;height:14px}
+.padd{aspect-ratio:1;border:2px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;text-align:center;padding:6px}
+.padd:hover{border-color:var(--primary);color:var(--primary)}
+.padd svg{width:24px;height:24px}
+.hint{font-size:12.5px;color:var(--muted)}
+.efoot{position:sticky;bottom:0;display:flex;gap:10px;justify-content:flex-end;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);margin-top:18px}
+
+/* pickups */
+.plist{padding:8px 18px 24px}
+.pgroup{padding:14px 0;border-bottom:1px solid var(--line)}
+.pgroup:last-child{border-bottom:none}
+.pgroup h3{margin:0 0 10px;font-size:17px;display:flex;align-items:baseline;gap:8px}
+.pgroup h3 span{font-size:13px;color:var(--muted);font-weight:500}
+.prow{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:8px 0}
+.prow .pimg{width:56px;height:56px;border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.prow .pimg img{width:100%;height:100%;object-fit:cover}
+.prow .pimg .noimg svg{width:20px;height:20px}
+.prow .pt{font-weight:500;line-height:1.25;background:none;border:none;padding:0;text-align:left}
+.prow .pm{font-size:13px;color:var(--muted)}
+.prow .pmsg{font-size:13px;margin-top:4px;padding:6px 9px;border-radius:8px;background:var(--surface-2);white-space:pre-wrap}
+
+/* toasts & burst */
+.toasts{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:center;width:min(480px,calc(100vw - 24px));pointer-events:none}
+.toast{background:var(--navy);color:#fff;padding:12px 16px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:15px;opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;max-width:100%}
+.toast.in{opacity:1;transform:none}
+.toast.ok{background:var(--teal)}
+.toast.err{background:var(--danger);color:#fff}
+@media (prefers-color-scheme:dark){.toast{background:#22405C}.toast.ok{background:#006D64}.toast.err{background:#9B1C13}}
+.burst{position:fixed;width:9px;height:9px;border-radius:2px;pointer-events:none;z-index:1001;animation:burst .9s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes burst{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+@media (prefers-reduced-motion:reduce){.burst{display:none}dialog[open]{animation:none}.card{transition:none}}
+</style>
+</head>
+<body>
+
+<!-- Access gate -->
+<section class="gate" id="gate" hidden>
+  <div class="gate-card">
+    <div class="logo" data-initial>D</div>
+    <h1 data-sitename>Dibs</h1>
+    <p id="gateText">This page is just for friends and family. Enter the access code from your invite.</p>
+    <form id="gateForm" autocomplete="off">
+      <label class="sr" for="gateCode">Access code</label>
+      <input class="input" id="gateCode" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Access code" required>
+      <button class="btn primary big" id="gateBtn" type="submit">Enter</button>
+    </form>
+    <p class="gate-err" id="gateErr" role="alert"></p>
+    <p class="gate-hint" id="gateHint" hidden></p>
+    <p class="gate-hint"><button class="btn" type="button" id="gateBack" hidden>Back</button></p>
+  </div>
+</section>
+
+<!-- App -->
+<div id="app" hidden>
+  <header class="wrap top">
+    <div class="brand"><div class="logo" data-initial>D</div><h1 data-sitename>Dibs</h1></div>
+    <p class="tagline" id="tagline"></p>
+    <div class="demo" id="demoBar" hidden></div>
+    <div class="ownerbar" id="ownerBar" hidden>
+      <span class="who"><span class="pill-owner">Owner</span> You can add and edit items</span>
+      <button class="btn" data-act="pickups"></button>
+      <button class="btn" data-act="invite"></button>
+      <button class="btn primary" data-act="add"></button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="wrap">
+      <div class="trow">
+        <label class="search"><span class="sr">Search</span><span data-icon="search"></span>
+          <input class="input" id="q" type="search" placeholder="Search items" autocomplete="off"></label>
+        <label><span class="sr">Sort</span>
+          <select class="input sort" id="sort">
+            <option value="new">Newest</option>
+            <option value="az">A–Z</option>
+            <option value="price">Price</option>
+          </select></label>
+      </div>
+      <div class="chips" id="statusChips" role="group" aria-label="Show"></div>
+      <div class="chips cats" id="catChips" role="group" aria-label="Category"></div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <div class="grid" id="grid" aria-live="polite"></div>
+    <div class="empty" id="empty" hidden></div>
+  </main>
+
+  <footer><div class="wrap" id="foot"></div></footer>
+  <button class="fab" id="fab" data-act="add" aria-label="Add item"></button>
+</div>
+
+<dialog id="detailDlg" aria-label="Item details"><div id="detailBody"></div></dialog>
+<dialog id="editorDlg" class="narrow" aria-label="Edit item"><form id="editorForm" novalidate></form></dialog>
+<dialog id="pickupsDlg" class="narrow" aria-label="Pickups"><div id="pickupsBody"></div></dialog>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- basics ---------- */
+const DEMO = !String(CONFIG.API_URL || '').trim();
+const NS = 'dibs:' + location.pathname + ':';
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(NS + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(NS + k, JSON.stringify(v)); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(NS + k); } catch {} },
+};
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const OWNER = esc(CONFIG.OWNER_NAME || 'The owner');
+
+const ICONS = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  left: '<path d="m15 18-6-6 6-6"/>',
+  right: '<path d="m9 18 6-6-6-6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',
+  box: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+  link: '<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+  hand: '<path d="M7 11V6a2 2 0 0 1 4 0v4"/><path d="M11 10V4a2 2 0 0 1 4 0v6"/><path d="M15 10V6a2 2 0 0 1 4 0v8a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.5L3 14a2 2 0 0 1 3.5-2L7 13"/>',
+  users: '<circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 12 0v1"/><path d="M16 4a4 4 0 0 1 0 8M22 21v-1a6 6 0 0 0-4-5.6"/>',
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+};
+const icon = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+
+const S = { key: null, role: null, items: [], friendCode: '', filter: 'available', q: '', cat: 'all', sort: 'new',
+  openId: null, openSig: '', gIdx: 0, lastSync: 0, offline: false, gateMode: 'friend' };
+let mine = LS.get('mine', {});           // itemId -> release token (this device's claims)
+let myName = LS.get('name', '');
+
+/* ---------- API ---------- */
+function apiErr(msg, code, data) { const e = new Error(msg); e.code = code; e.data = data || {}; return e; }
+async function api(action, payload = {}) {
+  const body = { action, key: S.key, ...payload };
+  if (DEMO) return Mock.handle(body);
+  let res;
+  try {
+    res = await fetch(CONFIG.API_URL.trim(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  } catch { throw apiErr('Can’t reach the server. Check your connection and try again.', 'NETWORK'); }
+  let j;
+  try { j = await res.json(); } catch { throw apiErr('The server sent an unexpected reply. (Owner: check the Apps Script deployment is set to “Anyone”.)', 'BAD_REPLY'); }
+  if (!j || !j.ok) throw apiErr((j && j.error) || 'Something went wrong.', j && j.code, j);
+  return j;
+}
+
+/* ---------- demo backend (only when API_URL is empty) ---------- */
+const Mock = (() => {
+  const FRIEND = 'friends', OWNERC = 'owner';
+  const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+  function art(kind, bg, fg) {
+    const sh = {
+      sofa: `<rect x="70" y="122" width="260" height="66" rx="14" fill="${fg}"/><rect x="92" y="86" width="216" height="52" rx="14" fill="${fg}" opacity=".82"/><rect x="54" y="108" width="42" height="92" rx="13" fill="${fg}"/><rect x="304" y="108" width="42" height="92" rx="13" fill="${fg}"/><rect x="78" y="198" width="10" height="24" fill="${fg}"/><rect x="312" y="198" width="10" height="24" fill="${fg}"/>`,
+      lamp: `<path d="M158 58h84l32 72H126z" fill="${fg}"/><rect x="196" y="130" width="8" height="112" fill="${fg}"/><ellipse cx="200" cy="246" rx="46" ry="10" fill="${fg}"/>`,
+      table: `<rect x="66" y="108" width="268" height="18" rx="4" fill="${fg}"/><rect x="88" y="126" width="12" height="104" fill="${fg}"/><rect x="300" y="126" width="12" height="104" fill="${fg}"/><rect x="88" y="150" width="224" height="6" fill="${fg}" opacity=".5"/>`,
+      plant: `<path d="M158 182h84l-12 62h-60z" fill="${fg}"/><ellipse cx="200" cy="118" rx="22" ry="58" fill="${fg}" opacity=".95"/><ellipse cx="158" cy="134" rx="18" ry="46" transform="rotate(-38 158 134)" fill="${fg}" opacity=".8"/><ellipse cx="242" cy="134" rx="18" ry="46" transform="rotate(38 242 134)" fill="${fg}" opacity=".8"/>`,
+      bike: `<circle cx="128" cy="190" r="48" fill="none" stroke="${fg}" stroke-width="10"/><circle cx="272" cy="190" r="48" fill="none" stroke="${fg}" stroke-width="10"/><path d="M128 190l52-80h70l22 80M180 110l40 80h52M172 100h32M248 110l10-26h24" fill="none" stroke="${fg}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`,
+      books: `<rect x="118" y="200" width="164" height="28" rx="3" fill="${fg}"/><rect x="134" y="170" width="142" height="28" rx="3" fill="${fg}" opacity=".85"/><rect x="112" y="140" width="152" height="28" rx="3" fill="${fg}" opacity=".7"/><rect x="140" y="110" width="132" height="28" rx="3" fill="${fg}" opacity=".85"/>`,
+      kettle: `<path d="M140 120h120l14 110H126z" fill="${fg}"/><path d="M260 140c40 0 40 60 0 60" fill="none" stroke="${fg}" stroke-width="12"/><path d="M140 140l-40-30" stroke="${fg}" stroke-width="14" stroke-linecap="round"/><rect x="176" y="100" width="48" height="20" rx="6" fill="${fg}"/>`,
+    };
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="${bg}"/>${sh[kind]}</svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+  function seed() {
+    const now = Date.now(), h = 36e5, d = 24 * h;
+    const base = { description: '', category: '', condition: '', dimensions: '', price: '', room: '', pickup: '', photos: [], status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '' };
+    return [
+      { ...base, id: 'd1', title: 'Three-seater sofa, olive velvet', description: 'Comfortable and sturdy. A bit worn on the left arm. The cushion covers come off and are washable.\n\nYou’ll need two people and a van — it fits through a standard door.', category: 'Furniture', condition: 'Good', dimensions: 'W 210 × D 92 × H 84 cm', room: 'Living room', pickup: 'From 1 December', photos: [art('sofa', '#3E5B4A', '#C9D8B6'), art('sofa', '#E9E2D3', '#56715F'), art('sofa', '#2C4438', '#9DBB8C')], created: now - 2 * h, updated: now - 2 * h },
+      { ...base, id: 'd2', title: 'Brass floor lamp', description: 'Warm light, dimmable. Bulb included.', category: 'Lighting', condition: 'Like new', dimensions: 'W 35 × D 35 × H 160 cm', price: '15', room: 'Bedroom', photos: [art('lamp', '#2B2F3A', '#E2B65B')], status: 'claimed', claimedBy: 'Anna', claimedAt: now - 5 * h, claimMessage: 'Could I pick it up Saturday morning?', claimToken: uid(), created: now - 3 * d, updated: now - 5 * h },
+      { ...base, id: 'd3', title: 'Oak dining table', description: 'Seats six. Legs unscrew for transport.', category: 'Furniture', condition: 'Good', dimensions: 'W 160 × D 90 × H 75 cm', price: '60', room: 'Kitchen', photos: [art('table', '#D9C7A7', '#7A5530'), art('table', '#F1E8D8', '#8E6A43')], created: now - 3 * d, updated: now - 3 * d },
+      { ...base, id: 'd4', title: 'Monstera in terracotta pot', description: 'Very happy plant. Needs a bright spot without direct sun.', category: 'Plants', condition: 'Good', dimensions: 'H 110 cm', room: 'Living room', pickup: 'Any time', photos: [art('plant', '#EFE6D6', '#2F7D4F')], created: now - 20 * h, updated: now - 20 * h },
+      { ...base, id: 'd5', title: 'City bike, 7 gears', description: 'New tyres this spring. Frame size 56. Lock and key included.', category: 'Outdoor', condition: 'Good', price: '45', room: 'Shed', photos: [art('bike', '#19324A', '#7FD1C7')], status: 'claimed', claimedBy: 'Tom', claimedAt: now - 26 * h, claimMessage: '', claimToken: uid(), created: now - 4 * d, updated: now - 26 * h },
+      { ...base, id: 'd6', title: 'Box of paperbacks (about 40)', description: 'Mostly crime and sci-fi.', category: 'Books', condition: 'Well-loved', room: 'Study', photos: [art('books', '#F3E3C3', '#A4483A')], status: 'gone', claimedBy: 'Mum', claimedAt: now - 6 * d, created: now - 8 * d, updated: now - 2 * d },
+      { ...base, id: 'd7', title: 'Electric kettle, 1.7 L', category: 'Kitchen', condition: 'Fair', price: '5', room: 'Kitchen', photos: [art('kettle', '#DCE7EE', '#33505F')], created: now - 30 * h, updated: now - 30 * h },
+      { ...base, id: 'd8', title: 'Round wall mirror', description: 'Photo coming soon.', category: 'Decor', condition: 'Like new', dimensions: 'W 60 × D 3 × H 60 cm', room: 'Hallway', created: now - 6 * h, updated: now - 6 * h },
+    ];
+  }
+  const load = () => LS.get('demo.items', null) || seed();
+  const save = items => { if (!LS.set('demo.items', items)) throw apiErr('Demo storage is full — remove some photos or reset the demo.', 'QUOTA'); };
+  const view = (it, role) => { const v = { ...it }; delete v.claimToken; if (role !== 'owner') delete v.claimMessage; return v; };
+  async function handle(req) {
+    await new Promise(r => setTimeout(r, 160));
+    const role = req.key === OWNERC ? 'owner' : req.key === FRIEND ? 'friend' : null;
+    if (!role) throw apiErr('That access code is not right.', 'AUTH');
+    const items = load();
+    const find = id => items.find(i => i.id === id);
+    const now = Date.now();
+    switch (req.action) {
+      case 'list': return { ok: true, role, items: items.map(i => view(i, role)), friendCode: role === 'owner' ? FRIEND : undefined, now };
+      case 'claim': {
+        const name = String(req.name || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+        if (!name) throw apiErr('Please enter your name.', 'INVALID');
+        const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
+        if (it.status === 'claimed') throw apiErr(`Too late — ${it.claimedBy} already called dibs on this.`, 'TAKEN', { item: view(it, role) });
+        if (it.status !== 'available') throw apiErr('This item is no longer available.', 'UNAVAILABLE', { item: view(it, role) });
+        Object.assign(it, { status: 'claimed', claimedBy: name, claimedAt: now, claimMessage: String(req.message || '').trim().slice(0, 500), claimToken: uid(), updated: now });
+        save(items); return { ok: true, token: it.claimToken, item: view(it, role) };
+      }
+      case 'unclaim': {
+        const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
+        if (it.status !== 'claimed') return { ok: true, item: view(it, role) };
+        if (req.token !== it.claimToken && role !== 'owner') throw apiErr('Only the person who called dibs (or the owner) can release this.', 'FORBIDDEN');
+        Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', updated: now });
+        save(items); return { ok: true, item: view(it, role) };
+      }
+    }
+    if (role !== 'owner') throw apiErr('Only the owner can do that.', 'FORBIDDEN');
+    switch (req.action) {
+      case 'uploadPhoto': return { ok: true, id: 'data:' + (req.mime || 'image/jpeg') + ';base64,' + req.data };
+      case 'saveItem': {
+        const src = req.item || {};
+        if (!String(src.title || '').trim()) throw apiErr('A title is needed.', 'INVALID');
+        let it = src.id ? find(src.id) : null;
+        if (src.id && !it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
+        if (!it) { it = { id: uid(), status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', created: now }; items.push(it); }
+        ['title', 'description', 'category', 'condition', 'dimensions', 'price', 'room', 'pickup'].forEach(k => it[k] = String(src[k] || '').trim());
+        it.photos = (src.photos || []).slice(0, 10); it.updated = now;
+        save(items); return { ok: true, item: view(it, 'owner') };
+      }
+      case 'deleteItem': { const i = items.findIndex(x => x.id === req.id); if (i >= 0) items.splice(i, 1); save(items); return { ok: true }; }
+      case 'setStatus': {
+        const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
+        if (req.status === 'available') Object.assign(it, { claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '' });
+        it.status = req.status; it.updated = now; save(items); return { ok: true, item: view(it, 'owner') };
+      }
+    }
+    throw apiErr('Unknown action', 'BAD_ACTION');
+  }
+  return { handle, FRIEND, OWNER: OWNERC, reset() { LS.del('demo.items'); } };
+})();
+
+/* ---------- formatting ---------- */
+const isRemote = ref => /^(data:|https?:|blob:)/.test(ref);
+function photoURL(ref, w = 800) {
+  if (!ref) return '';
+  if (isRemote(ref)) return ref;
+  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(ref)}&sz=w${w}`;
+}
+function imgTag(ref, w, alt = '') {
+  if (!ref) return `<span class="noimg">${icon('camera')}</span>`;
+  return `<img src="${esc(photoURL(ref, w))}" alt="${esc(alt)}" loading="lazy" decoding="async" data-ref="${esc(ref)}" data-w="${w}">`;
+}
+// Drive thumbnail failed? try the other Google image host, then show a placeholder.
+document.addEventListener('error', e => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || !img.dataset.ref) return;
+  if (!img.dataset.fb && !isRemote(img.dataset.ref)) { img.dataset.fb = '1'; img.src = `https://lh3.googleusercontent.com/d/${img.dataset.ref}=w${img.dataset.w}`; return; }
+  const ph = document.createElement('span'); ph.className = 'noimg'; ph.innerHTML = icon('camera'); img.replaceWith(ph);
+}, true);
+
+function priceLabel(p) {
+  const s = String(p ?? '').trim();
+  if (!s || /^(0+([.,]0+)?|free|gratis|-)$/i.test(s)) return 'Free';
+  if (/^\d+([.,]\d{1,2})?$/.test(s)) return (CONFIG.CURRENCY || '') + s;
+  return s;
+}
+function priceNum(it) { const m = String(it.price || '').replace(',', '.').match(/\d+(\.\d+)?/); return priceLabel(it.price) === 'Free' ? 0 : (m ? +m[0] : 1e9); }
+const shortDims = d => String(d || '').replace(/\b[WDH]\s*/g, '').replace(/\s*×\s*/g, '×');
+function timeAgo(ms) {
+  if (!ms) return '';
+  const s = Math.max(0, (Date.now() - ms) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + ' min ago';
+  if (s < 86400) { const h = Math.floor(s / 3600); return h + (h === 1 ? ' hour ago' : ' hours ago'); }
+  const d = Math.floor(s / 86400);
+  if (d < 14) return d === 1 ? 'yesterday' : d + ' days ago';
+  return new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+const byId = id => S.items.find(i => i.id === id);
+const nameMatch = it => myName && it.claimedBy && it.claimedBy.trim().toLowerCase() === myName.trim().toLowerCase();
+const hasToken = it => it.status === 'claimed' && !!mine[it.id];
+const isMine = it => it.status !== 'available' && (hasToken(it) || nameMatch(it));
+const isNew = it => it.status === 'available' && it.created && Date.now() - it.created < 48 * 36e5;
+
+function normalise(it) {
+  return {
+    id: String(it.id), title: String(it.title || 'Untitled'), description: String(it.description || ''), category: String(it.category || ''),
+    condition: String(it.condition || ''), dimensions: String(it.dimensions || ''), price: String(it.price ?? ''), room: String(it.room || ''),
+    pickup: String(it.pickup || ''), photos: Array.isArray(it.photos) ? it.photos.filter(Boolean).map(String) : [],
+    status: ['available', 'claimed', 'gone'].includes(it.status) ? it.status : 'available', claimedBy: String(it.claimedBy || ''),
+    claimedAt: +it.claimedAt || 0, claimMessage: String(it.claimMessage || ''), created: +it.created || 0, updated: +it.updated || 0,
+  };
+}
+function upsert(raw) {
+  const it = normalise(raw);
+  const i = S.items.findIndex(x => x.id === it.id);
+  if (i >= 0) S.items[i] = it; else S.items.push(it);
+  return it;
+}
+function pruneMine() {
+  let changed = false;
+  for (const id of Object.keys(mine)) {
+    const it = byId(id);
+    if (!it || it.status === 'available') { delete mine[id]; changed = true; }
+  }
+  if (changed) LS.set('mine', mine);
+}
+
+/* ---------- toasts & burst ---------- */
+function toast(msg, kind = '') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + kind; t.textContent = msg;
+  $('#toasts').append(t);
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('in')));
+  setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 250); }, kind === 'err' ? 6500 : 3800);
+}
+function burst(el) {
+  if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const cols = ['#00A296', '#F3C000', '#005858', '#FFFFFF', '#F3C000'];
+  for (let i = 0; i < 22; i++) {
+    const p = document.createElement('span'); p.className = 'burst';
+    const a = Math.random() * Math.PI * 2, dist = 70 + Math.random() * 110;
+    p.style.cssText = `left:${cx}px;top:${cy}px;background:${cols[i % cols.length]};--dx:${Math.cos(a) * dist}px;--dy:${Math.sin(a) * dist - 40}px;--r:${Math.random() * 540}deg`;
+    document.body.append(p); setTimeout(() => p.remove(), 1000);
+  }
+}
+
+/* ---------- rendering: shell ---------- */
+function paintStatic() {
+  document.title = CONFIG.SITE_NAME || 'Dibs';
+  $$('[data-sitename]').forEach(e => e.textContent = CONFIG.SITE_NAME || 'Dibs');
+  $$('[data-initial]').forEach(e => e.textContent = (CONFIG.SITE_NAME || 'D').trim().charAt(0).toUpperCase());
+  $('#tagline').textContent = CONFIG.TAGLINE || '';
+  $$('[data-icon]').forEach(e => e.outerHTML = icon(e.dataset.icon));
+  $('#fab').innerHTML = icon('plus');
+  $('[data-act=add]', $('#ownerBar')).innerHTML = icon('plus') + 'Add item';
+  $('[data-act=invite]').innerHTML = icon('link') + 'Copy invite link';
+}
+
+function renderAll() {
+  const owner = S.role === 'owner';
+  $('#ownerBar').hidden = !owner;
+  $('#fab').classList.toggle('on', owner);
+  if (owner) $('[data-act=pickups]').innerHTML = icon('users') + `Pickups <span class="mono">${S.items.filter(i => i.status === 'claimed').length}</span>`;
+  renderDemoBar();
+  renderChips();
+  renderGrid();
+  renderFoot();
+  if ($('#detailDlg').open) refreshDetail();
+  if ($('#pickupsDlg').open) renderPickups();
+}
+
+function renderDemoBar() {
+  const bar = $('#demoBar');
+  bar.hidden = !DEMO;
+  if (!DEMO) return;
+  bar.innerHTML = `<span><b>Demo mode.</b> Nothing leaves this browser. Add your Apps Script URL to <span class="mono">CONFIG.API_URL</span> to go live.</span>
+    <button class="lnk" data-act="demo-switch">${S.role === 'owner' ? 'View as a friend' : 'View as owner'}</button>
+    <button class="lnk" data-act="demo-reset">Reset demo</button>`;
+}
+
+function renderChips() {
+  const all = S.items;
+  const counts = {
+    available: all.filter(i => i.status === 'available').length,
+    claimed: all.filter(i => i.status === 'claimed').length,
+    mine: all.filter(isMine).length,
+    all: all.length,
+  };
+  const st = [['available', 'Available'], ['claimed', 'Claimed'], ['mine', 'My dibs'], ['all', 'All']];
+  $('#statusChips').innerHTML = st.map(([k, l]) =>
+    `<button class="chip" data-filter="${k}" aria-pressed="${S.filter === k}">${l}<span class="n">${counts[k]}</span></button>`).join('');
+
+  const cats = {};
+  all.forEach(i => { if (i.status !== 'gone' || S.filter === 'all') { const c = i.category || 'Other'; cats[c] = (cats[c] || 0) + 1; } });
+  const names = Object.keys(cats).sort((a, b) => a.localeCompare(b));
+  if (S.cat !== 'all' && !cats[S.cat]) S.cat = 'all';
+  $('#catChips').hidden = names.length < 2;
+  $('#catChips').innerHTML = `<button class="chip" data-cat="all" aria-pressed="${S.cat === 'all'}">All categories</button>` +
+    names.map(c => `<button class="chip" data-cat="${esc(c)}" aria-pressed="${S.cat === c}">${esc(c)}<span class="n">${cats[c]}</span></button>`).join('');
+}
+
+function visibleItems() {
+  const q = S.q.trim().toLowerCase();
+  const rank = { available: 0, claimed: 1, gone: 2 };
+  const cmp = {
+    new: (a, b) => b.created - a.created,
+    az: (a, b) => a.title.localeCompare(b.title),
+    price: (a, b) => priceNum(a) - priceNum(b) || a.title.localeCompare(b.title),
+  }[S.sort];
+  return S.items.filter(it => {
+    if (S.filter === 'available' && it.status !== 'available') return false;
+    if (S.filter === 'claimed' && it.status !== 'claimed') return false;
+    if (S.filter === 'mine' && !isMine(it)) return false;
+    if (S.cat !== 'all' && (it.category || 'Other') !== S.cat) return false;
+    if (q && !`${it.title} ${it.description} ${it.category} ${it.room} ${it.claimedBy}`.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => (rank[a.status] - rank[b.status]) || cmp(a, b));
+}
+
+function cardHTML(it) {
+  const m = isMine(it);
+  let tag = '';
+  if (it.status === 'claimed') tag = m ? '<span class="tag t-mine">Your dibs</span>' : `<span class="tag t-claimed">Dibs: ${esc(it.claimedBy)}</span>`;
+  else if (it.status === 'gone') tag = '<span class="tag t-gone">Gone</span>';
+  else if (isNew(it)) tag = '<span class="tag t-new">New</span>';
+  const pl = priceLabel(it.price);
+  return `<button class="card is-${it.status}" data-open="${esc(it.id)}" aria-label="${esc(it.title)}">
+    <span class="ph">${imgTag(it.photos[0], 640, it.title)}${tag}${it.photos.length > 1 ? `<span class="pcount">${icon('camera')}${it.photos.length}</span>` : ''}</span>
+    <span class="cbody"><span class="ctitle">${esc(it.title)}</span>
+      <span class="cmeta"><span class="price${pl === 'Free' ? ' free' : ''}">${esc(pl)}</span>${it.dimensions ? `<span class="dims mono">${esc(shortDims(it.dimensions))}</span>` : ''}</span>
+    </span></button>`;
+}
+
+function renderGrid() {
+  const list = visibleItems();
+  $('#grid').innerHTML = list.map(cardHTML).join('');
+  const empty = $('#empty');
+  empty.hidden = list.length > 0;
+  if (!list.length) {
+    let msg;
+    if (!S.items.length) msg = S.role === 'owner' ? 'No items yet. Tap <b>Add item</b> to list your first one.' : 'Nothing listed yet — check back soon.';
+    else if (S.q) msg = `Nothing matches “${esc(S.q)}”.`;
+    else if (S.filter === 'mine') msg = 'You haven’t called dibs on anything yet.';
+    else if (S.filter === 'available') msg = 'Everything has been claimed! Look under <b>All</b> to see what went where.';
+    else msg = 'Nothing here.';
+    empty.innerHTML = icon('box') + `<p>${msg}</p>`;
+  }
+}
+
+function renderSkeleton() {
+  $('#grid').innerHTML = Array.from({ length: 8 }, () =>
+    `<div class="card skeleton" aria-hidden="true"><span class="ph"></span><span class="cbody"><span class="bar" style="width:80%"></span><span class="bar" style="width:40%"></span></span></div>`).join('');
+}
+
+function renderFoot() {
+  const t = S.lastSync ? new Date(S.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+  $('#foot').innerHTML = `
+    <span class="sync"><span class="dot${S.offline ? ' off' : ''}"></span>${S.offline ? 'Offline — retrying' : 'Updated ' + t}</span>
+    <button class="lnk" data-act="refresh">Refresh</button>
+    ${myName ? `<span>You’re <b>${esc(myName)}</b> · <button class="lnk" data-act="rename">change</button></span>` : ''}
+    <span style="margin-left:auto"></span>
+    ${S.role !== 'owner' && !DEMO ? '<button class="lnk" data-act="owner-login">Owner login</button>' : ''}
+    ${!DEMO ? '<button class="lnk" data-act="signout">Sign out</button>' : ''}`;
+}
+
+/* ---------- detail ---------- */
+const sigOf = it => it ? [it.status, it.claimedBy, it.claimMessage, it.updated, mine[it.id] || ''].join('|') : '';
+
+function openDetail(id) {
+  const it = byId(id); if (!it) return;
+  S.openId = id; S.gIdx = 0;
+  renderDetail();
+  const d = $('#detailDlg');
+  if (!d.open) d.showModal();
+  $('#detailBody').scrollTop = 0; d.scrollTop = 0;
+}
+
+function renderDetail() {
+  const it = byId(S.openId); if (!it) return;
+  S.openSig = sigOf(it);
+  const pl = priceLabel(it.price);
+  const facts = [
+    it.dimensions && ['Dimensions', `<span class="mono">${esc(it.dimensions)}</span>`],
+    it.pickup && ['Pickup', esc(it.pickup)],
+    it.room && ['Where', esc(it.room)],
+    it.created && ['Listed', esc(timeAgo(it.created))],
+  ].filter(Boolean);
+  $('#detailBody').innerHTML = `
+    <div class="detail">
+      <button class="x float" data-close="detailDlg" aria-label="Close">${icon('x')}</button>
+      <div class="gallery" id="gallery">${galleryHTML(it)}</div>
+      <div class="info">
+        <div class="badges">${[it.category, it.condition].filter(Boolean).map(b => `<span class="badge">${esc(b)}</span>`).join('')}</div>
+        <h2>${esc(it.title)}</h2>
+        <div class="pricebig${pl === 'Free' ? ' free' : ''}">${esc(pl)}</div>
+        ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : ''}
+        ${it.description ? `<p class="desc">${esc(it.description)}</p>` : ''}
+        <div id="claimSlot">${claimHTML(it)}</div>
+        <div id="ownerSlot">${ownerToolsHTML(it)}</div>
+      </div>
+    </div>`;
+  bindGallery();
+}
+
+function refreshDetail() {
+  const it = byId(S.openId);
+  if (!it) { $('#detailDlg').close(); toast('That item was just removed.'); return; }
+  if (sigOf(it) === S.openSig) return;
+  // keep whatever the person was typing
+  const n = $('#cname')?.value, m = $('#cmsg')?.value;
+  S.openSig = sigOf(it);
+  $('#claimSlot').innerHTML = claimHTML(it);
+  $('#ownerSlot').innerHTML = ownerToolsHTML(it);
+  if (n != null && $('#cname')) $('#cname').value = n;
+  if (m != null && $('#cmsg')) $('#cmsg').value = m;
+}
+
+function galleryHTML(it) {
+  const ph = it.photos, n = ph.length, i = Math.min(S.gIdx, Math.max(0, n - 1));
+  return `<div class="gmain" id="gmain">${imgTag(ph[i], 1600, it.title)}
+      ${n > 1 ? `<button class="gnav prev" data-g="-1" aria-label="Previous photo">${icon('left')}</button><button class="gnav next" data-g="1" aria-label="Next photo">${icon('right')}</button><span class="gcount">${i + 1} / ${n}</span>` : ''}
+    </div>
+    ${n > 1 ? `<div class="gthumbs">${ph.map((p, j) => `<button class="gthumb${j === i ? ' on' : ''}" data-gi="${j}" aria-label="Photo ${j + 1}">${imgTag(p, 200)}</button>`).join('')}</div>` : ''}`;
+}
+function goPhoto(i) {
+  const it = byId(S.openId); if (!it || it.photos.length < 2) return;
+  const n = it.photos.length;
+  S.gIdx = (i + n) % n;
+  $('#gallery').innerHTML = galleryHTML(it);
+  bindGallery();
+  $('.gthumb.on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+function bindGallery() {
+  const g = $('#gmain'); if (!g) return;
+  let x0 = null;
+  g.addEventListener('pointerdown', e => { x0 = e.clientX; });
+  g.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) goPhoto(S.gIdx + (dx < 0 ? 1 : -1)); });
+}
+
+function claimHTML(it) {
+  if (it.status === 'available') {
+    const owner = S.role === 'owner';
+    return `<div class="claimbox">
+      <h3>${icon('hand')}Want it?</h3>
+      <label class="field"><span>${owner ? 'Name (claiming for someone else?)' : 'Your name'}</span>
+        <input class="input" id="cname" maxlength="60" autocomplete="given-name" value="${owner ? '' : esc(myName)}" placeholder="e.g. Anna"></label>
+      <label class="field"><span>Note for ${OWNER} (optional)</span>
+        <textarea class="input" id="cmsg" maxlength="500" rows="2" placeholder="When could you pick it up?"></textarea></label>
+      <button class="btn primary big" data-act="claim" data-id="${esc(it.id)}">Call dibs</button>
+      <p class="small">First come, first served. ${OWNER} gets an email straight away.</p>
+    </div>`;
+  }
+  if (it.status === 'claimed') {
+    if (hasToken(it)) return `<div class="claimbox mine">
+      <h3>${icon('check')}It’s yours!</h3>
+      <p>You called dibs ${esc(timeAgo(it.claimedAt))}. ${OWNER} has been notified and will be in touch about pickup.</p>
+      <div class="btnrow"><button class="btn" data-act="release" data-id="${esc(it.id)}">${icon('undo')}Changed my mind</button></div>
+    </div>`;
+    if (nameMatch(it)) return `<div class="claimbox mine">
+      <h3>${icon('check')}You called dibs</h3>
+      <p>Claimed as <b>${esc(it.claimedBy)}</b> ${esc(timeAgo(it.claimedAt))}. Changed your mind? Ask ${OWNER} to release it.</p>
+    </div>`;
+    return `<div class="claimbox claimed">
+      <h3>${icon('star')}Claimed</h3>
+      <p><b>${esc(it.claimedBy)}</b> called dibs ${esc(timeAgo(it.claimedAt))}.</p>
+      <p class="small">If they change their mind it will show up as available again.</p>
+    </div>`;
+  }
+  return `<div class="claimbox gone"><h3>${icon('box')}Found a new home</h3>
+    <p>${it.claimedBy ? `Went to <b>${esc(it.claimedBy)}</b>.` : 'This one is gone.'}</p></div>`;
+}
+
+function ownerToolsHTML(it) {
+  if (S.role !== 'owner') return '';
+  const id = esc(it.id);
+  const b = [`<button class="btn" data-act="edit" data-id="${id}">${icon('edit')}Edit</button>`];
+  if (it.status === 'claimed') {
+    b.push(`<button class="btn primary" data-act="gone" data-id="${id}">${icon('check')}Handed over</button>`);
+    b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('undo')}Release claim</button>`);
+  } else if (it.status === 'available') {
+    b.push(`<button class="btn" data-act="gone" data-id="${id}">${icon('box')}Mark as gone</button>`);
+  } else {
+    b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('undo')}Make available again</button>`);
+  }
+  b.push(`<button class="btn danger" data-act="delete" data-id="${id}">${icon('trash')}Delete</button>`);
+  return `<div class="owner-tools">
+    <div class="lbl"><span class="pill-owner">Owner</span>Only you see this</div>
+    ${it.status !== 'available' && it.claimMessage ? `<div><div class="hint">Note from ${esc(it.claimedBy)}:</div><div class="claimbox claimed" style="padding:10px 12px;margin-top:4px"><p style="white-space:pre-wrap">${esc(it.claimMessage)}</p></div></div>` : ''}
+    <div class="btnrow">${b.join('')}</div>
+  </div>`;
+}
+
+/* ---------- actions ---------- */
+async function doClaim(btn) {
+  const id = btn.dataset.id, nameEl = $('#cname'), msgEl = $('#cmsg');
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.focus(); nameEl.setAttribute('aria-invalid', 'true'); toast('Add your name so ' + (CONFIG.OWNER_NAME || 'the owner') + ' knows who it is.', 'err'); return; }
+  btn.disabled = true; btn.textContent = 'Calling dibs…';
+  try {
+    const r = await api('claim', { id, name, message: msgEl.value.trim() });
+    if (S.role !== 'owner') { myName = name; LS.set('name', name); }
+    mine[id] = r.token; LS.set('mine', mine);
+    upsert(r.item);
+    burst(btn);
+    toast(S.role === 'owner' ? `Claimed for ${name}.` : `It’s yours! ${CONFIG.OWNER_NAME || 'The owner'} has been notified.`, 'ok');
+    renderAll();
+  } catch (e) {
+    if (e.data && e.data.item) upsert(e.data.item);
+    toast(e.message, 'err');
+    renderAll();
+    if (btn.isConnected) { btn.disabled = false; btn.textContent = 'Call dibs'; }
+  }
+}
+
+async function simple(btn, action, payload, okMsg, confirmMsg) {
+  if (confirmMsg && !confirm(confirmMsg)) return null;
+  const prev = btn.innerHTML; btn.disabled = true;
+  try {
+    const r = await api(action, payload);
+    if (r.item) upsert(r.item);
+    if (okMsg) toast(okMsg, 'ok');
+    return r;
+  } catch (e) {
+    if (e.data && e.data.item) upsert(e.data.item);
+    toast(e.message, 'err');
+    return null;
+  } finally {
+    if (btn.isConnected) { btn.disabled = false; btn.innerHTML = prev; }
+    renderAll();
+  }
+}
+
+async function copyText(text, okMsg) {
+  try { await navigator.clipboard.writeText(text); toast(okMsg, 'ok'); }
+  catch { window.prompt('Copy this:', text); }
+}
+
+async function invite() {
+  if (!S.friendCode) { toast('Invite code not available.', 'err'); return; }
+  const url = `${location.origin}${location.pathname}#k=${encodeURIComponent(S.friendCode)}`;
+  const text = `Call dibs on things from my place: ${url}`;
+  if (navigator.share && matchMedia('(pointer:coarse)').matches) {
+    try { await navigator.share({ title: CONFIG.SITE_NAME || 'Dibs', text: 'Call dibs on things from my place', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  copyText(text, 'Invite link copied — paste it into your group chat.');
+}
+
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-open],[data-close],[data-act],[data-filter],[data-cat],[data-g],[data-gi]');
+  if (!t) {
+    // click on the dimmed backdrop closes a dialog
+    if (e.target instanceof HTMLDialogElement && e.target.id !== 'editorDlg') e.target.close();
+    return;
+  }
+  if (t.dataset.open) return openDetail(t.dataset.open);
+  if (t.dataset.close) return $('#' + t.dataset.close).close();
+  if (t.dataset.filter) { S.filter = t.dataset.filter; LS.set('filter', S.filter); renderChips(); renderGrid(); return; }
+  if (t.dataset.cat) { S.cat = t.dataset.cat; renderChips(); renderGrid(); return; }
+  if (t.dataset.g) return goPhoto(S.gIdx + +t.dataset.g);
+  if (t.dataset.gi) return goPhoto(+t.dataset.gi);
+
+  const id = t.dataset.id, it = id ? byId(id) : null;
+  switch (t.dataset.act) {
+    case 'claim': return doClaim(t);
+    case 'release': {
+      const r = await simple(t, 'unclaim', { id, token: mine[id] }, 'Released — it’s available again.', 'Release your dibs on this item?');
+      if (r) { delete mine[id]; LS.set('mine', mine); renderAll(); }
+      return;
+    }
+    case 'gone': return simple(t, 'setStatus', { id, status: 'gone' }, it && it.status === 'claimed' ? `Marked as handed over to ${it.claimedBy}.` : 'Marked as gone.');
+    case 'avail': return simple(t, 'setStatus', { id, status: 'available' }, 'Available again.',
+      it && it.status === 'claimed' ? `Release ${it.claimedBy}’s claim? They won’t be notified automatically.` : null);
+    case 'delete': {
+      const r = await simple(t, 'deleteItem', { id }, 'Deleted.', `Delete “${it ? it.title : 'this item'}” for good? Its photos go to your Drive bin.`);
+      if (r) { S.items = S.items.filter(x => x.id !== id); $('#detailDlg').close(); renderAll(); }
+      return;
+    }
+    case 'edit': return openEditor(id);
+    case 'add': return openEditor(null);
+    case 'pickups': renderPickups(); return $('#pickupsDlg').showModal();
+    case 'copy-pickups': return copyText(pickupsText(), 'Pickup list copied.');
+    case 'invite': return invite();
+    case 'refresh': return refresh(false);
+    case 'rename': {
+      const n = prompt('Your name (as shown on your claims):', myName);
+      if (n != null) { myName = n.trim(); LS.set('name', myName); renderAll(); }
+      return;
+    }
+    case 'owner-login': return showGate('owner');
+    case 'signout': return signOut();
+    case 'demo-switch': S.key = S.role === 'owner' ? Mock.FRIEND : Mock.OWNER; LS.set('key', S.key); return refresh(true);
+    case 'demo-reset': if (confirm('Reset the demo items?')) { Mock.reset(); mine = {}; LS.set('mine', mine); await refresh(false); toast('Demo reset.'); } return;
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (!$('#detailDlg').open || e.target.matches('input,textarea,select')) return;
+  if (e.key === 'ArrowRight') goPhoto(S.gIdx + 1);
+  if (e.key === 'ArrowLeft') goPhoto(S.gIdx - 1);
+});
+$('#detailDlg').addEventListener('close', () => { S.openId = null; });
+
+$('#q').addEventListener('input', e => { S.q = e.target.value; renderGrid(); });
+$('#sort').addEventListener('change', e => { S.sort = e.target.value; LS.set('sort', S.sort); renderGrid(); });
+
+/* ---------- editor (owner) ---------- */
+let E = null;
+const CONDITIONS = ['New', 'Like new', 'Good', 'Fair', 'Well-loved'];
+const DEFAULT_CATS = ['Furniture', 'Kitchen', 'Electronics', 'Lighting', 'Decor', 'Books', 'Plants', 'Outdoor', 'Clothing', 'Sports', 'Kids', 'Other'];
+
+function parseDims(s) {
+  s = String(s || '');
+  const g = k => (s.match(new RegExp('\\b' + k + '\\s*([\\d.,]+)', 'i')) || [])[1] || '';
+  const unit = (s.match(/\b(mm|cm|m|in)\b/i) || [])[1] || 'cm';
+  const out = { w: g('W'), d: g('D'), h: g('H'), unit: unit.toLowerCase() };
+  out.parsed = !s.trim() || !!(out.w || out.d || out.h);
+  return out;
+}
+function buildDims(w, d, h, unit) {
+  const parts = [w && 'W ' + w, d && 'D ' + d, h && 'H ' + h].filter(Boolean);
+  return parts.length ? parts.join(' × ') + ' ' + unit : '';
+}
+
+function openEditor(id) {
+  const it = id ? byId(id) : null;
+  E = { id: it ? it.id : null, photos: (it ? it.photos : []).map(ref => ({ ref })), dims: it ? it.dimensions : '', dirty: false, busy: false };
+  const v = k => esc(it ? it[k] : '');
+  const dm = parseDims(E.dims);
+  const cats = [...new Set([...S.items.map(i => i.category).filter(Boolean), ...DEFAULT_CATS])];
+  const rooms = [...new Set(S.items.map(i => i.room).filter(Boolean))];
+  const cond = it ? it.condition : '';
+  $('#editorForm').innerHTML = `
+    <div class="dhead"><h2>${it ? 'Edit item' : 'Add an item'}</h2><button type="button" class="x" data-act="editor-cancel" aria-label="Close">${icon('x')}</button></div>
+    <div class="eform">
+      <div class="c6 field"><span>Photos — the first one is the cover</span><div class="photos" id="photoGrid"></div>
+        <span class="hint">On your phone you can take photos straight from here. Photos are resized before uploading.</span></div>
+      <label class="c6 field"><span>Title *</span><input class="input" name="title" required maxlength="120" value="${v('title')}" placeholder="e.g. Oak dining table"></label>
+      <label class="c6 field"><span>Description</span><textarea class="input" name="description" maxlength="4000" rows="4" placeholder="Anything people should know: wear and tear, what’s included, why you’re letting it go…">${v('description')}</textarea></label>
+      <label class="c3 field"><span>Category</span><input class="input" name="category" list="catList" maxlength="40" value="${v('category')}" placeholder="Furniture">
+        <datalist id="catList">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
+      <label class="c3 field"><span>Condition</span><select class="input" name="condition">
+        <option value="">—</option>${[...new Set([...CONDITIONS, cond].filter(Boolean))].map(c => `<option${c === cond ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+      <div class="c6 field"><span>Dimensions</span>
+        <div class="dimrow">
+          <label><b>W</b><input class="input mono" name="dw" inputmode="decimal" value="${esc(dm.w)}" aria-label="Width"></label>
+          <label><b>D</b><input class="input mono" name="dd" inputmode="decimal" value="${esc(dm.d)}" aria-label="Depth"></label>
+          <label><b>H</b><input class="input mono" name="dh" inputmode="decimal" value="${esc(dm.h)}" aria-label="Height"></label>
+          <select class="input" name="du" aria-label="Unit">${['cm', 'mm', 'm', 'in'].map(u => `<option${u === dm.unit ? ' selected' : ''}>${u}</option>`).join('')}</select>
+        </div>
+        ${dm.parsed ? '' : `<span class="hint">Currently: <span class="mono">${esc(E.dims)}</span> — kept unless you fill in numbers.</span>`}
+      </div>
+      <label class="c2 field"><span>Price</span><input class="input" name="price" maxlength="30" value="${v('price')}" placeholder="Free"></label>
+      <label class="c2 field"><span>Where is it</span><input class="input" name="room" list="roomList" maxlength="60" value="${v('room')}" placeholder="Living room">
+        <datalist id="roomList">${rooms.map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
+      <label class="c2 field"><span>Pickup</span><input class="input" name="pickup" maxlength="300" value="${v('pickup')}" placeholder="From 1 Dec"></label>
+    </div>
+    <div class="efoot">
+      <button type="button" class="btn" data-act="editor-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="saveBtn">${it ? 'Save changes' : 'Add item'}</button>
+    </div>`;
+  renderPhotoGrid();
+  const d = $('#editorDlg');
+  if (!d.open) d.showModal();
+  if (!it) setTimeout(() => $('[name=title]', d)?.focus(), 50);
+}
+
+function renderPhotoGrid() {
+  const g = $('#photoGrid'); if (!g) return;
+  g.innerHTML = E.photos.map((p, i) => `
+    <div class="pthumb">
+      <img src="${esc(p.preview || photoURL(p.ref, 300))}" alt="" data-ref="${esc(p.preview ? '' : p.ref)}" data-w="300">
+      ${i === 0 ? '<span class="cover">Cover</span>' : ''}
+      <span class="pbtns">
+        ${i > 0 ? `<button type="button" data-act="ph-left" data-i="${i}" aria-label="Move earlier">${icon('left')}</button>` : ''}
+        <button type="button" data-act="ph-del" data-i="${i}" aria-label="Remove photo">${icon('x')}</button>
+      </span>
+    </div>`).join('') +
+    (E.photos.length < 10 ? `<label class="padd">${icon('camera')}<span>Add photos</span><input type="file" accept="image/*" multiple hidden id="photoInput"></label>` : '');
+  $('#photoInput')?.addEventListener('change', onPhotos);
+}
+
+async function resizeImage(file, max = 1600, quality = 0.82) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error(`Couldn’t read “${file.name}”. Try a JPEG or PNG.`)); i.src = url; });
+    const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', quality);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+async function onPhotos(e) {
+  const files = [...e.target.files].slice(0, 10 - E.photos.length);
+  const lbl = e.target.closest('.padd');
+  if (lbl) lbl.querySelector('span').textContent = 'Processing…';
+  for (const f of files) {
+    try { const data = await resizeImage(f, DEMO ? 900 : 1600, DEMO ? 0.72 : 0.82); E.photos.push({ data, preview: data }); E.dirty = true; }
+    catch (err) { toast(err.message, 'err'); }
+  }
+  renderPhotoGrid();
+}
+
+$('#editorForm').addEventListener('input', () => { if (E) E.dirty = true; });
+$('#editorForm').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b || !E) return;
+  const i = +b.dataset.i;
+  if (b.dataset.act === 'ph-del') { E.photos.splice(i, 1); E.dirty = true; renderPhotoGrid(); }
+  if (b.dataset.act === 'ph-left') { const [p] = E.photos.splice(i, 1); E.photos.splice(i - 1, 0, p); E.dirty = true; renderPhotoGrid(); }
+  if (b.dataset.act === 'editor-cancel') closeEditor();
+});
+function closeEditor() {
+  if (E && E.busy) return;
+  if (E && E.dirty && !confirm('Discard your changes?')) return;
+  $('#editorDlg').close();
+}
+$('#editorDlg').addEventListener('cancel', e => { e.preventDefault(); closeEditor(); });
+
+$('#editorForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!E || E.busy) return;
+  const f = e.target, val = n => (f.elements[n]?.value || '').trim();
+  const title = val('title');
+  if (!title) { f.elements.title.focus(); toast('Give the item a title.', 'err'); return; }
+  const built = buildDims(val('dw'), val('dd'), val('dh'), val('du'));
+  const dims = built || (parseDims(E.dims).parsed ? '' : E.dims);
+  const btn = $('#saveBtn');
+  E.busy = true; btn.disabled = true;
+  try {
+    const pending = E.photos.filter(p => !p.ref).length;
+    let n = 0;
+    for (const p of E.photos) {
+      if (p.ref) continue;
+      n++; btn.textContent = `Uploading photo ${n} of ${pending}…`;
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+      const r = await api('uploadPhoto', { data: p.data.split(',')[1], mime: 'image/jpeg', name: `${slug}-${n}.jpg` });
+      p.ref = r.id;
+    }
+    btn.textContent = 'Saving…';
+    const r = await api('saveItem', { item: {
+      id: E.id, title, description: f.elements.description.value.trim(), category: val('category'), condition: val('condition'),
+      dimensions: dims, price: val('price'), room: val('room'), pickup: val('pickup'), photos: E.photos.map(p => p.ref),
+    } });
+    const it = upsert(r.item);
+    const wasNew = !E.id;
+    E.busy = false; E.dirty = false;
+    $('#editorDlg').close();
+    if (wasNew && S.filter !== 'all' && S.filter !== 'available') { S.filter = 'available'; }
+    renderAll();
+    toast(wasNew ? 'Item added.' : 'Saved.', 'ok');
+    if (!wasNew && $('#detailDlg').open && S.openId === it.id) renderDetail();
+  } catch (err) {
+    toast(err.message, 'err');
+    E.busy = false; btn.disabled = false; btn.textContent = E.id ? 'Save changes' : 'Add item';
+  }
+});
+
+/* ---------- pickups (owner) ---------- */
+function pickupGroups() {
+  const groups = {};
+  S.items.filter(i => i.status === 'claimed').forEach(it => {
+    const k = it.claimedBy.trim().toLowerCase();
+    (groups[k] = groups[k] || { name: it.claimedBy.trim(), items: [] }).items.push(it);
+  });
+  return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+}
+function renderPickups() {
+  const gs = pickupGroups();
+  $('#pickupsBody').innerHTML = `
+    <div class="dhead"><h2>Pickups</h2><div class="btnrow">
+      ${gs.length ? `<button class="btn" data-act="copy-pickups">Copy list</button>` : ''}
+      <button class="x" data-close="pickupsDlg" aria-label="Close">${icon('x')}</button></div></div>
+    <div class="plist">${gs.length ? gs.map(g => `
+      <section class="pgroup"><h3>${esc(g.name)} <span>${g.items.length} item${g.items.length > 1 ? 's' : ''}</span></h3>
+        ${g.items.sort((a, b) => a.claimedAt - b.claimedAt).map(it => `
+          <div class="prow">
+            <div class="pimg">${imgTag(it.photos[0], 160)}</div>
+            <div><button class="pt" data-open="${esc(it.id)}">${esc(it.title)}</button>
+              <div class="pm">${esc(priceLabel(it.price))} · claimed ${esc(timeAgo(it.claimedAt))}</div>
+              ${it.claimMessage ? `<div class="pmsg">${esc(it.claimMessage)}</div>` : ''}</div>
+            <button class="btn" data-act="gone" data-id="${esc(it.id)}" title="Mark as handed over">${icon('check')}<span>Handed over</span></button>
+          </div>`).join('')}
+      </section>`).join('') : `<div class="empty">${icon('users')}<p>No open claims right now.</p></div>`}
+    </div>`;
+}
+function pickupsText() {
+  return pickupGroups().map(g => `${g.name}:\n` + g.items.map(it => `  • ${it.title} (${priceLabel(it.price)})${it.claimMessage ? ' — “' + it.claimMessage.replace(/\s+/g, ' ') + '”' : ''}`).join('\n')).join('\n\n');
+}
+
+/* ---------- gate, session, refresh ---------- */
+function showGate(mode = 'friend', err = '') {
+  S.gateMode = mode;
+  $('#app').hidden = true; $('#gate').hidden = false;
+  $('#gateText').textContent = mode === 'owner' ? 'Enter your owner code to add and edit items.' : 'This page is just for friends and family. Enter the access code from your invite.';
+  $('#gateErr').textContent = err;
+  $('#gateBack').hidden = !(mode === 'owner' && S.role);
+  $('#gateCode').value = '';
+  setTimeout(() => $('#gateCode').focus(), 30);
+}
+function showApp() { $('#gate').hidden = true; $('#app').hidden = false; }
+
+$('#gateBack').addEventListener('click', () => showApp());
+$('#gateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const code = $('#gateCode').value.trim(); if (!code) return;
+  const btn = $('#gateBtn'); btn.disabled = true; btn.textContent = 'Checking…';
+  const prevKey = S.key;
+  S.key = code;
+  try {
+    const r = await api('list');
+    LS.set('key', code);
+    applyList(r);
+    showApp(); renderAll();
+    if (S.role === 'owner') toast('Signed in as owner.', 'ok');
+  } catch (err) {
+    S.key = prevKey;
+    $('#gateErr').textContent = err.code === 'AUTH' ? 'That code didn’t work — check your invite.' : err.message;
+  } finally { btn.disabled = false; btn.textContent = 'Enter'; }
+});
+
+function signOut(msg) {
+  LS.del('key'); S.key = null; S.role = null; S.items = [];
+  showGate('friend', msg || '');
+}
+
+function applyList(r) {
+  S.role = r.role;
+  S.friendCode = r.friendCode || '';
+  S.items = (r.items || []).map(normalise);
+  S.lastSync = Date.now(); S.offline = false;
+  pruneMine();
+}
+
+let refreshing = false;
+async function refresh(silent = true) {
+  if (refreshing || !S.key) return;
+  refreshing = true;
+  try {
+    applyList(await api('list'));
+    renderAll();
+    if (!silent) toast('Up to date.');
+  } catch (e) {
+    if (e.code === 'AUTH') { signOut('Your access code no longer works. Ask for a new invite.'); return; }
+    S.offline = true; renderFoot();
+    if (!silent) toast(e.message, 'err');
+  } finally { refreshing = false; }
+}
+
+setInterval(() => { if (!document.hidden && S.key && !$('#editorDlg').open) refresh(true); }, Math.max(10, +CONFIG.REFRESH_SECONDS || 30) * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.key && Date.now() - S.lastSync > 8000) refresh(true); });
+
+// an invite/owner link opened in a tab that already shows the page
+window.addEventListener('hashchange', async () => {
+  const k = new URLSearchParams(location.hash.slice(1)).get('k');
+  if (!k) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  const prevKey = S.key;
+  S.key = k.trim();
+  try {
+    applyList(await api('list'));
+    LS.set('key', S.key);
+    showApp(); renderAll();
+    toast(S.role === 'owner' ? 'Signed in as owner.' : 'You’re in.', 'ok');
+  } catch (e) {
+    S.key = prevKey;
+    if (e.code === 'AUTH') { if (prevKey) toast('That link’s code didn’t work.', 'err'); else showGate('friend', 'That invite code didn’t work — check the link you were sent.'); }
+    else toast(e.message, 'err');
+  }
+});
+
+async function boot() {
+  paintStatic();
+  S.filter = LS.get('filter', 'available'); S.sort = LS.get('sort', 'new'); $('#sort').value = S.sort;
+  const hashKey = new URLSearchParams(location.hash.slice(1)).get('k');
+  if (hashKey) { LS.set('key', hashKey.trim()); history.replaceState(null, '', location.pathname + location.search); }
+  S.key = LS.get('key', null);
+  if (DEMO) {
+    $('#gateHint').hidden = false;
+    $('#gateHint').innerHTML = 'Demo codes: <span class="mono">friends</span> or <span class="mono">owner</span>';
+    if (!S.key) { S.key = Mock.FRIEND; LS.set('key', S.key); }
+  }
+  if (!S.key) return showGate('friend');
+  showApp(); renderSkeleton();
+  try {
+    applyList(await api('list'));
+    renderAll();
+  } catch (e) {
+    if (e.code === 'AUTH') { LS.del('key'); S.key = null; return showGate('friend', 'That invite code didn’t work — check the link you were sent.'); }
+    S.offline = true;
+    $('#grid').innerHTML = '';
+    $('#empty').hidden = false;
+    $('#empty').innerHTML = icon('refresh') + `<p>${esc(e.message)}</p><p><button class="btn" data-act="refresh">Try again</button></p>`;
+    renderFoot();
+  }
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
