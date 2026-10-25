@@ -50,7 +50,7 @@ const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/……/exec',   // ← the URL from step 3
   SITE_NAME: 'Dibs',
   TAGLINE: 'Everything here needs a new home. …',
-  OWNER_NAME: 'Jake',
+  OWNER_NAME: '',          // optional first name shown in messages
   CURRENCY: '€',
   REFRESH_SECONDS: 30,
 };

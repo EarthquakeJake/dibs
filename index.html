@@ -17,7 +17,7 @@ const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbwXDgkowfKgHum5fApYkPs82Zs_Me6UMUEXDQ2GP3qJxgMfF1LQSrLCPe2bfnGnBGnmXw/exec', // your Apps Script web app. Empty = demo mode.
   SITE_NAME: 'Dibs',
   TAGLINE: 'Everything here needs a new home. Tap an item and call dibs — first come, first served.',
-  OWNER_NAME: 'Jake',     // used in messages like "Jake has been notified"
+  OWNER_NAME: '',         // optional first name, e.g. "Sam has been notified". Blank = neutral wording.
   CURRENCY: '€',
   REFRESH_SECONDS: 30,    // how often the page checks for new claims
 };
@@ -270,7 +270,7 @@ dialog[open]{animation:pop .18s ease-out}
     <p id="gateText">This page is just for friends and family. Enter the access code from your invite.</p>
     <form id="gateForm" autocomplete="off">
       <label class="sr" for="gateCode">Access code</label>
-      <input class="input" id="gateCode" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Access code" required>
+      <input class="input" id="gateCode" type="text" name="dibs-access" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="Access code or invite link" required>
       <button class="btn primary big" id="gateBtn" type="submit">Enter</button>
     </form>
     <p class="gate-err" id="gateErr" role="alert"></p>
@@ -339,7 +339,8 @@ const LS = {
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const OWNER = esc(CONFIG.OWNER_NAME || 'The owner');
+const OWNER_RAW = String(CONFIG.OWNER_NAME || '').trim();
+const ownerName = cap => esc(OWNER_RAW || (cap ? 'The owner' : 'the owner'));
 
 const ICONS = {
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
@@ -753,21 +754,21 @@ function claimHTML(it) {
       <h3>${icon('hand')}Want it?</h3>
       <label class="field"><span>${owner ? 'Name (claiming for someone else?)' : 'Your name'}</span>
         <input class="input" id="cname" maxlength="60" autocomplete="given-name" value="${owner ? '' : esc(myName)}" placeholder="e.g. Anna"></label>
-      <label class="field"><span>Note for ${OWNER} (optional)</span>
+      <label class="field"><span>Note for ${ownerName()} (optional)</span>
         <textarea class="input" id="cmsg" maxlength="500" rows="2" placeholder="When could you pick it up?"></textarea></label>
       <button class="btn primary big" data-act="claim" data-id="${esc(it.id)}">Call dibs</button>
-      <p class="small">First come, first served. ${OWNER} gets an email straight away.</p>
+      <p class="small">First come, first served. ${ownerName(true)} gets an email straight away.</p>
     </div>`;
   }
   if (it.status === 'claimed') {
     if (hasToken(it)) return `<div class="claimbox mine">
       <h3>${icon('check')}It’s yours!</h3>
-      <p>You called dibs ${esc(timeAgo(it.claimedAt))}. ${OWNER} has been notified and will be in touch about pickup.</p>
+      <p>You called dibs ${esc(timeAgo(it.claimedAt))}. ${ownerName(true)} has been notified and will be in touch about pickup.</p>
       <div class="btnrow"><button class="btn" data-act="release" data-id="${esc(it.id)}">${icon('undo')}Changed my mind</button></div>
     </div>`;
     if (nameMatch(it)) return `<div class="claimbox mine">
       <h3>${icon('check')}You called dibs</h3>
-      <p>Claimed as <b>${esc(it.claimedBy)}</b> ${esc(timeAgo(it.claimedAt))}. Changed your mind? Ask ${OWNER} to release it.</p>
+      <p>Claimed as <b>${esc(it.claimedBy)}</b> ${esc(timeAgo(it.claimedAt))}. Changed your mind? Ask ${ownerName()} to release it.</p>
     </div>`;
     return `<div class="claimbox claimed">
       <h3>${icon('star')}Claimed</h3>
@@ -803,7 +804,7 @@ function ownerToolsHTML(it) {
 async function doClaim(btn) {
   const id = btn.dataset.id, nameEl = $('#cname'), msgEl = $('#cmsg');
   const name = nameEl.value.trim();
-  if (!name) { nameEl.focus(); nameEl.setAttribute('aria-invalid', 'true'); toast('Add your name so ' + (CONFIG.OWNER_NAME || 'the owner') + ' knows who it is.', 'err'); return; }
+  if (!name) { nameEl.focus(); nameEl.setAttribute('aria-invalid', 'true'); toast('Add your name so ' + (OWNER_RAW || 'the owner') + ' knows who it is.', 'err'); return; }
   btn.disabled = true; btn.textContent = 'Calling dibs…';
   try {
     const r = await api('claim', { id, name, message: msgEl.value.trim() });
@@ -811,7 +812,7 @@ async function doClaim(btn) {
     mine[id] = r.token; LS.set('mine', mine);
     upsert(r.item);
     burst(btn);
-    toast(S.role === 'owner' ? `Claimed for ${name}.` : `It’s yours! ${CONFIG.OWNER_NAME || 'The owner'} has been notified.`, 'ok');
+    toast(S.role === 'owner' ? `Claimed for ${name}.` : `It’s yours! ${OWNER_RAW || 'The owner'} has been notified.`, 'ok');
     renderAll();
   } catch (e) {
     if (e.data && e.data.item) upsert(e.data.item);
@@ -847,9 +848,9 @@ async function copyText(text, okMsg) {
 async function invite() {
   if (!S.friendCode) { toast('Invite code not available.', 'err'); return; }
   const url = `${location.origin}${location.pathname}#k=${encodeURIComponent(S.friendCode)}`;
-  const text = `Call dibs on things from my place: ${url}`;
+  const text = `Call dibs on these items: ${url}`;
   if (navigator.share && matchMedia('(pointer:coarse)').matches) {
-    try { await navigator.share({ title: CONFIG.SITE_NAME || 'Dibs', text: 'Call dibs on things from my place', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.share({ title: CONFIG.SITE_NAME || 'Dibs', text: 'Call dibs on these items', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
   }
   copyText(text, 'Invite link copied — paste it into your group chat.');
 }
@@ -1098,6 +1099,13 @@ function pickupsText() {
 }
 
 /* ---------- gate, session, refresh ---------- */
+// accepts a bare code or a pasted invite link, ignoring stray quotes/punctuation
+function cleanCode(v) {
+  let s = String(v || '').trim();
+  const m = s.match(/[#&?]k=([^&\s]+)/);
+  if (m) { try { s = decodeURIComponent(m[1]); } catch { s = m[1]; } }
+  return s.replace(/^[\s"'`<(\[]+|[\s"'`>)\].,;:!]+$/g, '');
+}
 function showGate(mode = 'friend', err = '') {
   S.gateMode = mode;
   $('#app').hidden = true; $('#gate').hidden = false;
@@ -1112,7 +1120,7 @@ function showApp() { $('#gate').hidden = true; $('#app').hidden = false; }
 $('#gateBack').addEventListener('click', () => showApp());
 $('#gateForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const code = $('#gateCode').value.trim(); if (!code) return;
+  const code = cleanCode($('#gateCode').value); if (!code) return;
   const btn = $('#gateBtn'); btn.disabled = true; btn.textContent = 'Checking…';
   const prevKey = S.key;
   S.key = code;
@@ -1161,7 +1169,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && S.
 
 // an invite/owner link opened in a tab that already shows the page
 window.addEventListener('hashchange', async () => {
-  const k = new URLSearchParams(location.hash.slice(1)).get('k');
+  const k = cleanCode(new URLSearchParams(location.hash.slice(1)).get('k') || '');
   if (!k) return;
   history.replaceState(null, '', location.pathname + location.search);
   const prevKey = S.key;
@@ -1182,7 +1190,7 @@ async function boot() {
   paintStatic();
   S.filter = LS.get('filter', 'available'); S.sort = LS.get('sort', 'new'); $('#sort').value = S.sort;
   const hashKey = new URLSearchParams(location.hash.slice(1)).get('k');
-  if (hashKey) { LS.set('key', hashKey.trim()); history.replaceState(null, '', location.pathname + location.search); }
+  if (hashKey && cleanCode(hashKey)) { LS.set('key', cleanCode(hashKey)); history.replaceState(null, '', location.pathname + location.search); }
   S.key = LS.get('key', null);
   if (DEMO) {
     $('#gateHint').hidden = false;
