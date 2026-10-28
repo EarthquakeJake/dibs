@@ -4,21 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#0E1C2B">
-<title>Dibs</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230E1C2B'/%3E%3Ctext x='32' y='44' font-family='Arial' font-weight='700' font-size='34' text-anchor='middle' fill='%23F3C000'%3ED%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#0B0F17">
+<title>MOVE</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0F17'/%3E%3Crect x='5' y='5' width='54' height='54' rx='10' fill='none' stroke='%23B45CFF' stroke-width='3'/%3E%3Ctext x='32' y='44' font-weight='700' font-size='32' text-anchor='middle' fill='%23CB8BFF'%3E%E6%90%AC%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700&text=%E6%90%AC%E9%A6%99%E6%B8%AF%E5%8E%BB%E5%B1%8B&display=swap" rel="stylesheet">
 
 <script>
 /* ==================== SETTINGS — edit these ==================== */
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbwXDgkowfKgHum5fApYkPs82Zs_Me6UMUEXDQ2GP3qJxgMfF1LQSrLCPe2bfnGnBGnmXw/exec', // your Apps Script web app. Empty = demo mode.
-  SITE_NAME: 'Dibs',
-  TAGLINE: 'Everything here needs a new home. Tap an item and call dibs — first come, first served.',
+  SITE_NAME: 'MOVE',
+  TAGLINE: 'Everything here needs a new home. Tap an item to claim it — first come, first served.',
   OWNER_NAME: '',         // optional first name, e.g. "Sam has been notified". Blank = neutral wording.
   CURRENCY: '€',
+  GLYPH: '搬',              // shown in the neon logo (搬 = move). Blank = first letter of SITE_NAME.
+  DESTINATION: '香港 HKG',   // shown next to the logo. Blank = hide.
   REFRESH_SECONDS: 30,    // how often the page checks for new claims
 };
 /* =============================================================== */
@@ -26,238 +29,314 @@ const CONFIG = {
 
 <style>
 :root{
-  --navy:#0E1C2B; --teal:#005858; --green:#00A296; --gold:#F3C000;
-  --bg:#F5F3EE; --surface:#FFFFFF; --surface-2:#ECE8DF; --text:#0E1C2B; --muted:#5B6672; --line:#E2DED4;
-  --primary:#005858; --primary-hover:#004646; --on-primary:#fff;
-  --claimed-bg:#FFF1B8; --claimed-ink:#5C4700; --gone-bg:#E4E4E4; --gone-ink:#4F4F4F;
-  --new-bg:#D7F2EE; --new-ink:#00534C; --danger:#B42318;
-  --radius:16px; --shadow:0 1px 2px rgba(14,28,43,.05),0 6px 20px rgba(14,28,43,.06);
-  color-scheme:light;
-}
-@media (prefers-color-scheme:dark){
-  :root{
-    --bg:#0A1520; --surface:#112131; --surface-2:#18304A; --text:#E7EDF2; --muted:#93A4B3; --line:#21384D;
-    --primary:#00A296; --primary-hover:#00B8AA; --on-primary:#04201D;
-    --claimed-bg:rgba(243,192,0,.18); --claimed-ink:#F7D34E; --gone-bg:rgba(255,255,255,.08); --gone-ink:#B7C2CB;
-    --new-bg:rgba(0,162,150,.2); --new-ink:#5FD8CC; --danger:#FF8A80;
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
-    color-scheme:dark;
-  }
+  --bg:#0B0F17; --surface:#121722; --surface-2:#19202D; --sunk:#0E131C; --text:#ECEFF4; --muted:#8F9AAE; --line:#232B3A; --line-2:#36415A;
+  --neon:#B45CFF; --neon-soft:#CB8BFF; --neon-glow:rgba(180,92,255,.6);
+  --primary:#8B3DF0; --primary-hover:#9B52FA; --on-primary:#FFFFFF;
+  --accent:#3CCB9A; --accent-bg:rgba(60,203,154,.1);
+  --claimed:#FFB648; --claimed-bg:rgba(255,182,72,.09);
+  --gone:#8F9AAE; --gone-bg:rgba(143,154,174,.08);
+  --danger:#FF7A85; --danger-bg:rgba(255,122,133,.1);
+  --radius:12px; --radius-sm:8px;
+  --cjk:'Noto Sans TC','PingFang HK','PingFang TC','Microsoft JhengHei',sans-serif;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100dvh}
+html{-webkit-text-size-adjust:100%;background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;min-height:100dvh;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 body:has(dialog[open]){overflow:hidden}
+a{color:var(--text);text-underline-offset:2px}
+a:hover{color:var(--neon-soft)}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 [hidden]{display:none!important}
-.mono{font-family:'DM Mono',ui-monospace,Menlo,Consolas,monospace}
-.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+.mono{font-family:'Geist Mono',ui-monospace,Menlo,Consolas,monospace}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px}
+@media (max-width:560px){.wrap{padding:0 14px}}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.lnk{background:none;border:none;padding:0;color:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line-2)}
+.lnk:hover{text-decoration-color:currentColor;color:var(--text)}
 
 /* buttons & inputs */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 16px;font-weight:500;line-height:1.2;white-space:nowrap;transition:background .15s,border-color .15s,transform .1s}
-.btn:hover{border-color:var(--muted)}
-.btn:active{transform:scale(.98)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 14px;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-sm);font-size:14px;font-weight:500;line-height:1;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,box-shadow .2s}
+.btn:hover{border-color:var(--line-2);background:var(--surface-2)}
+.btn:focus-visible{outline:2px solid var(--neon-soft);outline-offset:2px}
+.btn svg.i{width:16px;height:16px}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
-.btn.primary:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+.btn.primary:hover{background:var(--primary-hover);border-color:var(--primary-hover);box-shadow:0 0 0 4px rgba(180,92,255,.14),0 6px 24px rgba(180,92,255,.28)}
 .btn.danger{color:var(--danger)}
-.btn.big{padding:14px 22px;font-size:17px;font-weight:700;width:100%}
-.btn:disabled{opacity:.6;cursor:default;transform:none}
-.btn.icon{padding:9px;border-radius:50%}
+.btn.danger:hover{background:var(--danger-bg);border-color:transparent}
+.btn.big{height:46px;font-size:15px;font-weight:600;width:100%}
+.btn:disabled{opacity:.5;cursor:default;box-shadow:none}
+.btn.icon{padding:0;width:38px}
+.btn .count{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:5px;background:var(--surface-2);color:var(--muted);font-size:12px}
 .field{display:flex;flex-direction:column;gap:6px}
-.field>span{font-size:13px;font-weight:500;color:var(--muted)}
-.input,textarea.input,select.input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 13px;outline:none;transition:border-color .15s,box-shadow .15s}
-.input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 22%,transparent)}
-textarea.input{resize:vertical;min-height:84px}
+.field>span{font-size:13px;font-weight:500;color:var(--text)}
+.input{width:100%;height:40px;border:1px solid var(--line);background:var(--sunk);border-radius:var(--radius-sm);padding:0 12px;font-size:15px;outline:none;transition:border-color .15s,box-shadow .15s}
+.input:hover{border-color:var(--line-2)}
+.input:focus{border-color:var(--muted);box-shadow:0 0 0 3px rgba(236,239,244,.07)}
+.input::placeholder{color:var(--muted);opacity:.75}
+.input[type=search]::-webkit-search-decoration{display:none}
+textarea.input{height:auto;padding:10px 12px;line-height:1.45;resize:vertical;min-height:84px}
+select.input{appearance:none;-webkit-appearance:none;padding-right:32px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238F9AAE' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center}
+select.input option{background:var(--surface)}
+
+/* neon logo */
+.logo{position:relative;flex:none;width:34px;height:34px;display:grid;place-items:center;border-radius:8px;border:1.5px solid var(--neon);color:var(--neon-soft);font:700 18px/1 var(--cjk);text-shadow:0 0 6px var(--neon-glow),0 0 16px rgba(180,92,255,.35);box-shadow:0 0 10px rgba(180,92,255,.28),inset 0 0 8px rgba(180,92,255,.18)}
 
 /* header */
-.top{padding-top:28px;padding-bottom:6px}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{width:42px;height:42px;border-radius:12px;background:var(--navy);color:var(--gold);display:grid;place-items:center;font-weight:700;font-size:22px;flex:none}
-@media (prefers-color-scheme:dark){.logo{background:#1B3550}}
-.top h1{font-size:clamp(28px,4.5vw,40px);margin:0;letter-spacing:-.025em;line-height:1.05}
-.tagline{color:var(--muted);margin:10px 0 0;max-width:62ch}
-.demo{margin:16px 0 0;padding:12px 14px;border-radius:12px;background:var(--claimed-bg);color:var(--claimed-ink);font-size:14px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
-.demo b{font-weight:700}
-.demo .lnk{background:none;border:none;padding:0;color:inherit;text-decoration:underline;font-weight:500}
-.ownerbar{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;align-items:center}
-.ownerbar .who{font-size:13px;color:var(--muted);margin-right:auto;display:flex;align-items:center;gap:6px}
-.pill-owner{background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
-@media (prefers-color-scheme:dark){.pill-owner{background:#1B3550}}
+.top{border-bottom:1px solid var(--line);background:var(--bg)}
+.bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;min-height:64px;padding-top:12px;padding-bottom:12px}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto;min-width:0}
+.name{margin:0;font-size:16px;font-weight:700;letter-spacing:.16em;line-height:1}
+.route{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font:500 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap}
+.route::first-letter{color:var(--neon-soft)}
+@media (max-width:420px){.route{display:none}}
+.pill-owner{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;background:var(--claimed-bg);color:var(--claimed);font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.brand .pill-owner{display:none}
+body:has(#ownerBar:not([hidden])) .brand .pill-owner{display:inline-flex}
+.ownerbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+@media (max-width:700px){.ownerbar [data-act=add]{display:none}}
+.intro{position:relative;padding-top:56px;padding-bottom:4px;min-height:200px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.glyph-bg{position:absolute;right:12px;top:8px;font:700 230px/1 var(--cjk);color:rgba(180,92,255,.16);text-shadow:0 0 28px rgba(180,92,255,.22),0 0 64px rgba(180,92,255,.12);pointer-events:none;user-select:none}
+.tagline{position:relative;margin:0;font-size:clamp(22px,3.2vw,32px);font-weight:500;letter-spacing:-.022em;line-height:1.2;max-width:30ch;text-wrap:balance}
+.tagline .sub{color:var(--muted)}
+.demo{position:relative;margin:20px 0 0;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font-size:13.5px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+.demo>span{flex:1 1 280px}
+.demo b{color:var(--text);font-weight:600}
+.demo .lnk{color:var(--text);font-weight:500}
+@media (max-width:700px){.glyph-bg{font-size:150px;right:-6px;top:6px;color:rgba(180,92,255,.11)}}
+@media (max-width:560px){.intro{padding-top:36px;min-height:0}.glyph-bg{font-size:120px;top:4px}}
 
 /* toolbar */
-.toolbar{position:sticky;top:0;z-index:5;margin-top:18px;padding:12px 0 10px;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.trow{display:flex;gap:10px;align-items:center}
-.search{position:relative;flex:1;min-width:0}
-.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
-.search .input{padding-left:38px;border-radius:999px}
-.sort{width:auto;border-radius:999px;padding-right:30px}
-.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-top:10px;padding-bottom:2px}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:500;display:inline-flex;gap:6px;align-items:center}
-.chip .n{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
-.chip[aria-pressed=true]{background:var(--text);color:var(--bg);border-color:var(--text)}
-.chip[aria-pressed=true] .n{color:inherit;opacity:.7}
-.chips.cats .chip{font-size:13px;padding:5px 11px}
-.sep{flex:none;width:1px;background:var(--line);margin:4px 4px}
+.toolbar{position:sticky;top:0;z-index:5;margin-top:28px;padding:12px 0;background:rgba(11,15,23,.86);backdrop-filter:saturate(1.3) blur(14px);-webkit-backdrop-filter:saturate(1.3) blur(14px);border-bottom:1px solid var(--line)}
+.trow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;gap:2px;padding:3px;background:var(--sunk);border:1px solid var(--line);border-radius:10px;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.seg::-webkit-scrollbar{display:none}
+.seg .chip{flex:none;white-space:nowrap;height:32px;padding:0 12px;border:0;background:transparent;border-radius:7px;font-size:14px;font-weight:500;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:background .15s,color .15s}
+.seg .chip:hover{color:var(--text)}
+.seg .chip[aria-pressed=true]{background:var(--surface-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-2)}
+.chip .n{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.search{position:relative;flex:1 1 220px;max-width:340px;margin-left:auto;min-width:0}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted);pointer-events:none}
+.search .input{padding-left:34px}
+.sort{width:auto}
+@media (max-width:700px){.seg{order:3;width:100%}.seg .chip{flex:1 0 auto}.search{max-width:none;margin-left:0}}
+.cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-top:10px}
+.cats::-webkit-scrollbar{display:none}
+.cats .chip{flex:none;height:30px;padding:0 11px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s,color .15s,box-shadow .2s}
+.cats .chip:hover{border-color:var(--line-2);color:var(--text)}
+.cats .chip[aria-pressed=true]{border-color:var(--neon);color:var(--neon-soft);box-shadow:0 0 10px rgba(180,92,255,.22),inset 0 0 6px rgba(180,92,255,.12)}
+.cats .chip[aria-pressed=true] .n{color:inherit;opacity:.7}
 
 /* grid & cards */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;padding:20px 0 40px}
-@media (max-width:560px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
-.card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,box-shadow .15s}
-.card:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(14,28,43,.06),0 12px 28px rgba(14,28,43,.1)}
-.card:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;padding:24px 0 56px}
+@media (max-width:560px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:16px}}
+.card{all:unset;box-sizing:border-box;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:border-color .2s,box-shadow .25s}
+.card:hover{border-color:rgba(180,92,255,.55);box-shadow:0 0 0 1px rgba(180,92,255,.18),0 12px 36px rgba(180,92,255,.1)}
+.card:focus-visible{outline:2px solid var(--neon-soft);outline-offset:2px}
 .ph{position:relative;display:block;aspect-ratio:4/3;background:var(--surface-2);overflow:hidden}
-.ph img{width:100%;height:100%;object-fit:cover;display:block;transition:filter .2s}
-.card.is-claimed .ph img{filter:saturate(.35) brightness(.9)}
-.card.is-gone{opacity:.55}
+.ph img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s cubic-bezier(.2,.7,.3,1),filter .2s}
+.card:hover .ph img{transform:scale(1.025)}
+.card.is-claimed .ph img{filter:saturate(.45) brightness(.85)}
+.card.is-gone{opacity:.5}
 .card.is-gone .ph img{filter:grayscale(1)}
 .noimg{width:100%;height:100%;display:grid;place-items:center;color:var(--muted)}
-.noimg svg{width:34px;height:34px;opacity:.5}
-.tag{position:absolute;left:8px;top:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
-.t-claimed{background:var(--gold);color:#3D2F00}
-.t-mine{background:var(--green);color:#fff}
-.t-gone{background:var(--gone-bg);color:var(--gone-ink)}
-.t-new{background:var(--surface);color:var(--new-ink)}
-.pcount{position:absolute;right:8px;bottom:8px;display:inline-flex;align-items:center;gap:4px;font:500 12px 'DM Mono',monospace;background:rgba(10,20,30,.62);color:#fff;padding:3px 7px;border-radius:999px}
+.noimg svg{width:30px;height:30px;opacity:.5;stroke-width:1.5}
+.tag{position:absolute;left:10px;top:10px;max-width:calc(100% - 20px);display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:6px;background:rgba(11,15,23,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--text);font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.tag::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 6px currentColor}
+.t-claimed{color:var(--claimed)}
+.t-mine{color:var(--accent)}
+.t-gone{color:var(--gone)}
+.t-new::before{background:var(--neon);box-shadow:0 0 6px var(--neon)}
+.pcount{position:absolute;right:10px;bottom:10px;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:6px;font:500 11.5px 'Geist Mono',ui-monospace,monospace;background:rgba(11,15,23,.7);color:#fff}
 .pcount svg{width:13px;height:13px}
 .cbody{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px}
-.ctitle{font-weight:700;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.cmeta{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:14px}
-.price{font-weight:700}
-.price.free{color:var(--primary)}
-.dims{color:var(--muted);font-size:12.5px}
-@media (max-width:560px){.cbody{padding:10px 11px 12px}.ctitle{font-size:14.5px}.cmeta{font-size:13px}}
-.empty{text-align:center;color:var(--muted);padding:60px 16px 80px}
-.empty svg{width:40px;height:40px;opacity:.5;margin-bottom:8px}
+.ctitle{font-size:15px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cmeta{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 10px}
+.price{font-size:15px;font-weight:600}
+.price.free{color:var(--accent)}
+.dims{color:var(--muted);font-size:12px}
+@media (max-width:560px){.cbody{padding:10px 11px 12px}.ctitle,.price{font-size:14px}}
+.empty{text-align:center;color:var(--muted);padding:72px 16px 96px}
+.empty svg{width:32px;height:32px;stroke-width:1.5;margin-bottom:4px}
+.empty p{margin:6px 0}
+.empty b{color:var(--text);font-weight:600}
+.skeleton{cursor:default}
+.skeleton:hover{box-shadow:none;border-color:var(--line)}
 .skeleton .ph{animation:pulse 1.2s ease-in-out infinite}
-.skeleton .bar{height:12px;border-radius:6px;background:var(--surface-2);animation:pulse 1.2s ease-in-out infinite}
-@keyframes pulse{50%{opacity:.5}}
+.skeleton .cbody{gap:8px}
+.skeleton .bar{height:12px;border-radius:4px;background:var(--surface-2);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
 
-footer{border-top:1px solid var(--line);padding:18px 0 calc(40px + env(safe-area-inset-bottom));color:var(--muted);font-size:13px}
-footer .wrap{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
-footer .lnk{background:none;border:none;padding:0;color:inherit;text-decoration:underline}
-.sync{display:inline-flex;align-items:center;gap:6px}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
-.dot.off{background:var(--danger)}
+footer{border-top:1px solid var(--line);padding:20px 0 calc(40px + env(safe-area-inset-bottom));color:var(--muted);font-size:13px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+footer b{color:var(--text);font-weight:500}
+.sync{display:inline-flex;align-items:center;gap:7px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent)}
+.dot.off{background:var(--danger);box-shadow:0 0 6px var(--danger)}
 
-.fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:6;width:58px;height:58px;border-radius:50%;border:none;background:var(--primary);color:var(--on-primary);box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;align-items:center;justify-content:center}
-.fab svg{width:26px;height:26px}
+.fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:6;width:56px;height:56px;border-radius:50%;border:none;background:var(--primary);color:var(--on-primary);box-shadow:0 0 0 4px rgba(180,92,255,.14),0 8px 28px rgba(180,92,255,.35);display:none;align-items:center;justify-content:center}
+.fab svg{width:24px;height:24px}
 @media (max-width:700px){.fab.on{display:flex}}
 
 /* gate */
-.gate{min-height:100dvh;display:grid;place-items:center;padding:24px 16px}
-.gate-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:32px 26px;box-shadow:var(--shadow);text-align:center}
-.gate-card .logo{margin:0 auto 14px;width:56px;height:56px;font-size:28px;border-radius:16px}
-.gate-card h1{margin:0 0 6px;font-size:28px;letter-spacing:-.02em}
-.gate-card p{color:var(--muted);margin:0 0 20px}
+.gate{min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:radial-gradient(600px 360px at 50% 30%,rgba(180,92,255,.09),transparent 70%)}
+.gate-card{width:min(400px,100%);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:40px 28px 28px;text-align:center}
+.gate-card .logo{margin:0 auto 20px;width:64px;height:64px;font-size:34px;border-radius:14px;border-width:2px;animation:flicker 1.6s ease-out both}
+.gate-card h1{margin:0;padding-left:.16em;font-size:22px;font-weight:700;letter-spacing:.16em;line-height:1.1}
+.gate-card .route{margin:12px auto 20px;width:max-content;display:flex}
+.gate-card p{color:var(--muted);margin:0 0 24px;font-size:14.5px;text-wrap:pretty}
+.gate-card h1+p{margin-top:12px}
 .gate-card form{display:flex;flex-direction:column;gap:10px}
-.gate-card .input{text-align:center;font-size:18px;letter-spacing:.04em}
-.gate-err{color:var(--danger);min-height:1.4em;margin:12px 0 0!important;font-size:14px}
-.gate-hint{font-size:13px;margin-top:6px!important}
+.gate-card .input{height:46px;text-align:center;font-size:16px}
+.gate-card .gate-err{color:var(--danger);min-height:1.4em;margin:12px 0 0;font-size:14px}
+.gate-card .gate-hint{font-size:13px;margin:6px 0 0}
+@keyframes flicker{0%,8%{opacity:.15;box-shadow:none;text-shadow:none}10%{opacity:1}12%{opacity:.3}16%,40%{opacity:1}42%{opacity:.5}44%,100%{opacity:1}}
 
 /* dialogs */
-dialog{border:none;padding:0;background:var(--surface);color:var(--text);border-radius:22px;width:min(960px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.35);overscroll-behavior:contain}
-dialog.narrow{width:min(620px,calc(100vw - 32px))}
-dialog::backdrop{background:rgba(6,14,22,.58);backdrop-filter:blur(2px)}
+dialog{border:none;padding:0;background:var(--surface);color:var(--text);border-radius:16px;width:min(980px,calc(100vw - 40px));max-height:calc(100dvh - 48px);overflow:auto;box-shadow:0 0 0 1px var(--line),0 30px 80px rgba(0,0,0,.6);overscroll-behavior:contain}
+dialog.narrow{width:min(620px,calc(100vw - 40px))}
+dialog::backdrop{background:rgba(3,5,9,.72);backdrop-filter:blur(4px)}
 dialog[open]{animation:pop .18s ease-out}
-@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.985)}}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.99)}}
 @media (max-width:700px){
-  dialog,dialog.narrow{width:100vw;max-width:100vw;max-height:94dvh;margin:auto 0 0;border-radius:22px 22px 0 0}
+  dialog,dialog.narrow{width:100vw;max-width:100vw;max-height:94dvh;margin:auto 0 0;border-radius:16px 16px 0 0}
   dialog[open]{animation:up .22s ease-out}
   @keyframes up{from{transform:translateY(40px);opacity:.6}}
 }
-.dhead{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
-.dhead h2{margin:0;font-size:18px}
-.x{border:none;background:var(--surface-2);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none}
-.x.float{position:absolute;right:12px;top:12px;z-index:4;background:rgba(10,20,30,.55);color:#fff}
+.dhead{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 14px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
+.dhead h2{margin:0;font-size:17px;font-weight:600}
+.x{border:none;background:transparent;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;flex:none;color:var(--muted);transition:background .15s,color .15s}
+.x:hover{background:var(--surface-2);color:var(--text)}
+.x.float{position:absolute;right:14px;top:14px;z-index:4;background:var(--surface-2);color:var(--text)}
+@media (max-width:760px){.x.float{background:rgba(0,0,0,.6);color:#fff;border-radius:50%}}
 
 /* detail */
 .detail{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);position:relative}
 @media (max-width:760px){.detail{grid-template-columns:1fr}}
-.gallery{background:#0B1520;display:flex;flex-direction:column;min-width:0;align-self:start}
-@media (min-width:761px){.gallery{align-self:stretch}.gmain{aspect-ratio:auto;flex:1;min-height:380px}}
+.gallery{background:#07090E;display:flex;flex-direction:column;min-width:0;align-self:start}
+@media (min-width:761px){.gallery{align-self:stretch}.gmain{aspect-ratio:auto;flex:1;min-height:420px}}
 .gmain{position:relative;aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden;touch-action:pan-y;user-select:none}
 .gmain img{width:100%;height:100%;object-fit:contain;display:block}
-.gmain .noimg{color:#6C7C8A}
-.gnav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,.88);color:#0E1C2B;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
-.gnav.prev{left:10px}.gnav.next{right:10px}
-.gcount{position:absolute;left:12px;bottom:10px;font:500 12px 'DM Mono',monospace;color:#fff;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:999px}
+.gmain .noimg{color:#5B6578}
+.gnav{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:none;background:rgba(236,239,244,.92);color:#0B0F17;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.gnav.prev{left:12px}.gnav.next{right:12px}
+.gcount{position:absolute;left:12px;bottom:12px;height:22px;display:inline-flex;align-items:center;padding:0 8px;border-radius:6px;font:500 11.5px 'Geist Mono',ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.55)}
 .gthumbs{display:flex;gap:6px;padding:8px;overflow-x:auto;scrollbar-width:thin}
-.gthumb{flex:none;width:62px;height:48px;border-radius:8px;overflow:hidden;border:2px solid transparent;padding:0;background:#18293A;opacity:.6}
-.gthumb.on{border-color:var(--gold);opacity:1}
+.gthumb{flex:none;width:60px;height:46px;border-radius:6px;overflow:hidden;border:2px solid transparent;padding:0;background:#141924;opacity:.5;transition:opacity .15s}
+.gthumb:hover{opacity:.85}
+.gthumb.on{border-color:var(--neon);opacity:1;box-shadow:0 0 8px rgba(180,92,255,.4)}
 .gthumb img{width:100%;height:100%;object-fit:cover;display:block}
-.info{padding:24px 24px 28px;display:flex;flex-direction:column;gap:14px;min-width:0}
-@media (max-width:760px){.info{padding:18px 16px 28px}}
-.badges{display:flex;flex-wrap:wrap;gap:6px}
-.badge{font-size:12px;font-weight:500;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--text)}
-.info h2{margin:0;font-size:clamp(22px,3vw,28px);letter-spacing:-.02em;line-height:1.15}
-.pricebig{font-size:22px;font-weight:700}
-.pricebig.free{color:var(--primary)}
-.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14.5px}
-.facts dt{color:var(--muted)}
+.info{padding:28px 28px 32px;display:flex;flex-direction:column;gap:16px;min-width:0}
+@media (max-width:760px){.info{padding:20px 16px 28px}}
+.badges{display:flex;flex-wrap:wrap;gap:6px;padding-right:44px}
+.badges:empty{display:none}
+.badge{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:6px;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:500}
+.info h2{margin:0;font-size:clamp(22px,2.6vw,27px);font-weight:600;letter-spacing:-.02em;line-height:1.2;text-wrap:balance}
+.pricebig{font-size:22px;font-weight:600;margin-top:-8px}
+.pricebig.free{color:var(--accent)}
+.facts{display:grid;grid-template-columns:minmax(96px,auto) 1fr;margin:0;font-size:14px;border-top:1px solid var(--line)}
+.facts dt,.facts dd{padding:10px 0;border-bottom:1px solid var(--line)}
+.facts dt{color:var(--muted);padding-right:16px}
 .facts dd{margin:0;overflow-wrap:anywhere}
-.desc{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
-.claimbox{border-radius:16px;padding:16px;background:var(--surface-2);display:flex;flex-direction:column;gap:12px;position:relative}
-.claimbox.claimed{background:var(--claimed-bg);color:var(--claimed-ink)}
-.claimbox.mine{background:var(--new-bg);color:var(--new-ink)}
-.claimbox.gone{background:var(--gone-bg);color:var(--gone-ink)}
-.claimbox h3{margin:0;font-size:17px;display:flex;align-items:center;gap:8px}
+.desc{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;color:#D3D8E1}
+.claimbox{border:1px solid var(--line);border-radius:12px;padding:18px;background:var(--sunk);display:flex;flex-direction:column;gap:12px;position:relative}
+.claimbox h3{margin:0;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
 .claimbox p{margin:0}
-.claimbox .small{font-size:13px;opacity:.85}
-.claimbox .note{background:color-mix(in srgb,var(--surface) 70%,transparent);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--text);white-space:pre-wrap}
-.owner-tools{border:1px dashed var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
-.owner-tools .lbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
+.claimbox .small{font-size:13px;color:var(--muted)}
+.claimbox.claimed{background:var(--claimed-bg);border-color:rgba(255,182,72,.22)}
+.claimbox.claimed h3{color:var(--claimed)}
+.claimbox.mine{background:var(--accent-bg);border-color:rgba(60,203,154,.25)}
+.claimbox.mine h3{color:var(--accent)}
+.claimbox.gone{background:var(--gone-bg);border-color:transparent}
+.claimbox.gone h3{color:var(--gone)}
+.claimbox .note{background:var(--surface);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);white-space:pre-wrap}
+.owner-tools{border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.owner-tools .lbl{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center}
 .btnrow{display:flex;flex-wrap:wrap;gap:8px}
 
 /* editor */
-.eform{padding:18px 18px 0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
+.eform{padding:20px 20px 0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
 .eform .c6{grid-column:span 6}.eform .c3{grid-column:span 3}.eform .c2{grid-column:span 2}
-@media (max-width:560px){.eform .c3{grid-column:span 6}.eform .c2{grid-column:span 3}}
-.dimrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 82px;gap:8px}
+@media (max-width:560px){.eform{padding:16px 16px 0}.eform .c3{grid-column:span 6}.eform .c2{grid-column:span 3}}
+.dimrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 84px;gap:8px}
 .dimrow label{position:relative}
-.dimrow label b{position:absolute;left:11px;top:50%;transform:translateY(-50%);font:500 13px 'DM Mono',monospace;color:var(--muted);pointer-events:none}
+.dimrow label b{position:absolute;left:11px;top:50%;transform:translateY(-50%);font:500 12px 'Geist Mono',ui-monospace,monospace;color:var(--muted);pointer-events:none}
 .dimrow .input{padding-left:30px}
 .dimrow select.input{padding-left:10px}
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
-.pthumb{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--surface-2)}
+.pthumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line)}
 .pthumb img{width:100%;height:100%;object-fit:cover;display:block}
-.pthumb .cover{position:absolute;left:5px;top:5px;font-size:10px;font-weight:700;background:var(--gold);color:#3D2F00;padding:2px 6px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.pthumb .cover{position:absolute;left:5px;top:5px;font-size:10px;font-weight:600;background:var(--primary);color:var(--on-primary);padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em}
 .pthumb .pbtns{position:absolute;right:4px;top:4px;display:flex;gap:4px}
-.pthumb .pbtns button{width:26px;height:26px;border-radius:50%;border:none;background:rgba(10,20,30,.7);color:#fff;display:grid;place-items:center;padding:0}
+.pthumb .pbtns button{width:26px;height:26px;border-radius:6px;border:none;background:rgba(11,15,23,.78);color:#fff;display:grid;place-items:center;padding:0}
 .pthumb .pbtns svg{width:14px;height:14px}
-.padd{aspect-ratio:1;border:2px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;text-align:center;padding:6px}
-.padd:hover{border-color:var(--primary);color:var(--primary)}
-.padd svg{width:24px;height:24px}
+.padd{aspect-ratio:1;border:1px dashed var(--line-2);border-radius:8px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;text-align:center;padding:6px;transition:border-color .15s,color .15s}
+.padd:hover{border-color:var(--neon);color:var(--neon-soft)}
+.padd svg{width:22px;height:22px}
 .hint{font-size:12.5px;color:var(--muted)}
-.efoot{position:sticky;bottom:0;display:flex;gap:10px;justify-content:flex-end;padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);margin-top:18px}
+.efoot{position:sticky;bottom:0;display:flex;gap:10px;justify-content:flex-end;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);margin-top:20px}
 
 /* pickups */
-.plist{padding:8px 18px 24px}
-.pgroup{padding:14px 0;border-bottom:1px solid var(--line)}
+.plist{padding:4px 20px 24px}
+.pgroup{padding:16px 0;border-bottom:1px solid var(--line)}
 .pgroup:last-child{border-bottom:none}
-.pgroup h3{margin:0 0 10px;font-size:17px;display:flex;align-items:baseline;gap:8px}
-.pgroup h3 span{font-size:13px;color:var(--muted);font-weight:500}
-.prow{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:8px 0}
-.prow .pimg{width:56px;height:56px;border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.pgroup h3{margin:0 0 8px;font-size:15px;font-weight:600;display:flex;align-items:baseline;gap:8px}
+.pgroup h3 span{font-size:13px;color:var(--muted);font-weight:400}
+.prow{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:8px 0}
+.prow .pimg{width:52px;height:52px;border-radius:8px;overflow:hidden;background:var(--surface-2)}
 .prow .pimg img{width:100%;height:100%;object-fit:cover}
-.prow .pimg .noimg svg{width:20px;height:20px}
-.prow .pt{font-weight:500;line-height:1.25;background:none;border:none;padding:0;text-align:left}
+.prow .pimg .noimg svg{width:18px;height:18px}
+.prow .pt{font-weight:500;line-height:1.3;background:none;border:none;padding:0;text-align:left}
+.prow .pt:hover{text-decoration:underline;text-underline-offset:3px}
 .prow .pm{font-size:13px;color:var(--muted)}
-.prow .pmsg{font-size:13px;margin-top:4px;padding:6px 9px;border-radius:8px;background:var(--surface-2);white-space:pre-wrap}
+.prow .pmsg{font-size:13px;margin-top:6px;padding:7px 10px;border-radius:6px;background:var(--surface-2);white-space:pre-wrap}
 
 /* toasts & burst */
 .toasts{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:center;width:min(480px,calc(100vw - 24px));pointer-events:none}
-.toast{background:var(--navy);color:#fff;padding:12px 16px;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:15px;opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;max-width:100%}
+.toast{background:#1E2532;color:var(--text);padding:11px 16px;border-radius:10px;box-shadow:0 0 0 1px var(--line-2),0 12px 32px rgba(0,0,0,.5);font-size:14px;opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;max-width:100%}
 .toast.in{opacity:1;transform:none}
-.toast.ok{background:var(--teal)}
-.toast.err{background:var(--danger);color:#fff}
-@media (prefers-color-scheme:dark){.toast{background:#22405C}.toast.ok{background:#006D64}.toast.err{background:#9B1C13}}
-.burst{position:fixed;width:9px;height:9px;border-radius:2px;pointer-events:none;z-index:1001;animation:burst .9s cubic-bezier(.2,.7,.3,1) forwards}
+.toast.err{background:#5A1620;box-shadow:0 0 0 1px #8A2333,0 12px 32px rgba(0,0,0,.5)}
+.burst{position:fixed;width:7px;height:7px;border-radius:2px;pointer-events:none;z-index:1001;animation:burst .9s cubic-bezier(.2,.7,.3,1) forwards}
 @keyframes burst{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
-@media (prefers-reduced-motion:reduce){.burst{display:none}dialog[open]{animation:none}.card{transition:none}}
+/* pickup times & waitlist */
+.slots{display:flex;flex-direction:column;gap:6px}
+.slot{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:14px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.slot:hover{border-color:var(--line-2)}
+.slot:has(input:checked){border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),0 0 14px rgba(180,92,255,.18)}
+.slot input{margin:0;accent-color:var(--neon);flex:none}
+.slot .n{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.claimbox select.input{background-color:var(--surface)}
+.claimbox.queued{background:rgba(180,92,255,.08);border-color:rgba(180,92,255,.3)}
+.claimbox.queued h3{color:var(--neon-soft)}
+.joinq{display:flex;gap:8px;flex-wrap:wrap}
+.joinq .input{flex:1 1 160px;background:var(--surface)}
+.joinq .btn{flex:none;height:40px}
+.t-queue{color:var(--neon-soft)}
+.hint b{color:var(--text);font-weight:500}
+.queue{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;font-size:14px}
+.queue li{display:flex;align-items:center;gap:10px;padding:3px 0;border-bottom:1px solid var(--line)}
+.queue li:last-child{border-bottom:none}
+.queue .pos{width:16px;color:var(--muted);font-size:12px;flex:none}
+.queue .x{width:28px;height:28px;margin-left:auto}
+.queue .x svg{width:15px;height:15px}
+.slotmgr{padding:18px 20px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+.slotmgr h3{margin:0;font-size:15px;font-weight:600}
+.slotmgr .hint{margin:2px 0 0}
+.slotchips{display:flex;flex-wrap:wrap;gap:6px}
+.slotchip{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 4px 0 12px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);font-size:13.5px}
+.slotchip .n{font-size:12px;color:var(--neon-soft)}
+.slotchip.past{opacity:.5}
+.slotchip button{border:none;background:none;width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--muted)}
+.slotchip button:hover{background:var(--surface-2);color:var(--text)}
+.slotchip button svg{width:14px;height:14px}
+.slotadd{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
+.slotadd .btn{height:40px}
+@media (max-width:560px){.slotadd{grid-template-columns:1fr 1fr}.slotadd .field:first-child,.slotadd .btn{grid-column:span 2}}
+.pslot-h{margin:18px 0 0;padding:0 0 6px;font:500 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--neon-soft);border-bottom:1px solid var(--line)}
+.pslot-h:first-child{margin-top:12px}
+@media (prefers-reduced-motion:reduce){.burst{display:none}dialog[open]{animation:none}.card,.ph img{transition:none}.gate-card .logo{animation:none}}
 </style>
 </head>
 <body>
@@ -265,12 +344,13 @@ dialog[open]{animation:pop .18s ease-out}
 <!-- Access gate -->
 <section class="gate" id="gate" hidden>
   <div class="gate-card">
-    <div class="logo" data-initial>D</div>
-    <h1 data-sitename>Dibs</h1>
+    <div class="logo" data-glyph aria-hidden="true">搬</div>
+    <h1 data-sitename>MOVE</h1>
+    <span class="route" data-dest>→ 香港 HKG</span>
     <p id="gateText">This page is just for friends and family. Enter the access code from your invite.</p>
     <form id="gateForm" autocomplete="off">
       <label class="sr" for="gateCode">Access code</label>
-      <input class="input" id="gateCode" type="text" name="dibs-access" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="Access code or invite link" required>
+      <input class="input" id="gateCode" type="text" name="move-access" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="Access code or invite link" required>
       <button class="btn primary big" id="gateBtn" type="submit">Enter</button>
     </form>
     <p class="gate-err" id="gateErr" role="alert"></p>
@@ -281,21 +361,27 @@ dialog[open]{animation:pop .18s ease-out}
 
 <!-- App -->
 <div id="app" hidden>
-  <header class="wrap top">
-    <div class="brand"><div class="logo" data-initial>D</div><h1 data-sitename>Dibs</h1></div>
-    <p class="tagline" id="tagline"></p>
-    <div class="demo" id="demoBar" hidden></div>
-    <div class="ownerbar" id="ownerBar" hidden>
-      <span class="who"><span class="pill-owner">Owner</span> You can add and edit items</span>
-      <button class="btn" data-act="pickups"></button>
-      <button class="btn" data-act="invite"></button>
-      <button class="btn primary" data-act="add"></button>
+  <header class="top">
+    <div class="wrap bar">
+      <div class="brand"><span class="logo" data-glyph aria-hidden="true">搬</span><h1 class="name" data-sitename>MOVE</h1><span class="route" data-dest>→ 香港 HKG</span><span class="pill-owner">Owner</span></div>
+      <div class="ownerbar" id="ownerBar" hidden>
+        <button class="btn" data-act="pickups"></button>
+        <button class="btn" data-act="invite"></button>
+        <button class="btn primary" data-act="add"></button>
+      </div>
     </div>
   </header>
+
+  <section class="wrap intro">
+    <span class="glyph-bg" data-glyph aria-hidden="true">搬</span>
+    <p class="tagline" id="tagline"></p>
+    <div class="demo" id="demoBar" hidden></div>
+  </section>
 
   <div class="toolbar">
     <div class="wrap">
       <div class="trow">
+        <div class="seg" id="statusChips" role="group" aria-label="Show"></div>
         <label class="search"><span class="sr">Search</span><span data-icon="search"></span>
           <input class="input" id="q" type="search" placeholder="Search items" autocomplete="off"></label>
         <label><span class="sr">Sort</span>
@@ -305,8 +391,7 @@ dialog[open]{animation:pop .18s ease-out}
             <option value="price">Price</option>
           </select></label>
       </div>
-      <div class="chips" id="statusChips" role="group" aria-label="Show"></div>
-      <div class="chips cats" id="catChips" role="group" aria-label="Category"></div>
+      <div class="cats" id="catChips" role="group" aria-label="Category"></div>
     </div>
   </div>
 
@@ -329,8 +414,10 @@ dialog[open]{animation:pop .18s ease-out}
 'use strict';
 
 /* ---------- basics ---------- */
-const DEMO = !String(CONFIG.API_URL || '').trim();
-const NS = 'dibs:' + location.pathname + ':';
+const FORCED_DEMO = new URLSearchParams(location.search).has('demo'); // add ?demo to the address to preview with sample items
+const DEMO = FORCED_DEMO || !String(CONFIG.API_URL || '').trim();
+// storage prefix keeps the old name so existing visitors stay signed in and keep their claims
+const NS = 'dibs:' + location.pathname + ':' + (FORCED_DEMO ? 'demo:' : '');
 const LS = {
   get(k, d) { try { const v = localStorage.getItem(NS + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(NS + k, JSON.stringify(v)); return true; } catch { return false; } },
@@ -363,9 +450,13 @@ const ICONS = {
 const icon = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
 const S = { key: null, role: null, items: [], friendCode: '', filter: 'available', q: '', cat: 'all', sort: 'new',
-  openId: null, openSig: '', gIdx: 0, lastSync: 0, offline: false, gateMode: 'friend' };
+  openId: null, openSig: '', gIdx: 0, lastSync: 0, offline: false, gateMode: 'friend', slots: [], qpos: {} };
 let mine = LS.get('mine', {});           // itemId -> release token (this device's claims)
+let queued = LS.get('queued', {});       // itemId -> waitlist token (this device's places in line)
 let myName = LS.get('name', '');
+const myTokens = () => [...Object.values(mine), ...Object.values(queued)].filter(Boolean);
+// the server answers which of these tokens hold a claim or a waitlist place
+const listReq = async () => { const tokens = myTokens(); const r = await api('list', { tokens }); r._sent = new Set(tokens); return r; };
 
 /* ---------- API ---------- */
 function apiErr(msg, code, data) { const e = new Error(msg); e.code = code; e.data = data || {}; return e; }
@@ -401,10 +492,10 @@ const Mock = (() => {
   }
   function seed() {
     const now = Date.now(), h = 36e5, d = 24 * h;
-    const base = { description: '', category: '', condition: '', dimensions: '', price: '', room: '', pickup: '', photos: [], status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '' };
+    const base = { description: '', category: '', condition: '', dimensions: '', price: '', room: '', pickup: '', photos: [], status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', waitlist: [], pickupSlot: '' };
     return [
       { ...base, id: 'd1', title: 'Three-seater sofa, olive velvet', description: 'Comfortable and sturdy. A bit worn on the left arm. The cushion covers come off and are washable.\n\nYou’ll need two people and a van — it fits through a standard door.', category: 'Furniture', condition: 'Good', dimensions: 'W 210 × D 92 × H 84 cm', room: 'Living room', pickup: 'From 1 December', photos: [art('sofa', '#3E5B4A', '#C9D8B6'), art('sofa', '#E9E2D3', '#56715F'), art('sofa', '#2C4438', '#9DBB8C')], created: now - 2 * h, updated: now - 2 * h },
-      { ...base, id: 'd2', title: 'Brass floor lamp', description: 'Warm light, dimmable. Bulb included.', category: 'Lighting', condition: 'Like new', dimensions: 'W 35 × D 35 × H 160 cm', price: '15', room: 'Bedroom', photos: [art('lamp', '#2B2F3A', '#E2B65B')], status: 'claimed', claimedBy: 'Anna', claimedAt: now - 5 * h, claimMessage: 'Could I pick it up Saturday morning?', claimToken: uid(), created: now - 3 * d, updated: now - 5 * h },
+      { ...base, id: 'd2', title: 'Brass floor lamp', description: 'Warm light, dimmable. Bulb included.', category: 'Lighting', condition: 'Like new', dimensions: 'W 35 × D 35 × H 160 cm', price: '15', room: 'Bedroom', photos: [art('lamp', '#2B2F3A', '#E2B65B')], status: 'claimed', claimedBy: 'Anna', claimedAt: now - 5 * h, claimMessage: 'Could I pick it up Saturday morning?', claimToken: uid(), pickupSlot: 's1', waitlist: [{ name: 'Sam', message: 'Happy to take it if Anna changes her mind.', slot: '', token: uid(), at: now - 2 * h }], created: now - 3 * d, updated: now - 5 * h },
       { ...base, id: 'd3', title: 'Oak dining table', description: 'Seats six. Legs unscrew for transport.', category: 'Furniture', condition: 'Good', dimensions: 'W 160 × D 90 × H 75 cm', price: '60', room: 'Kitchen', photos: [art('table', '#D9C7A7', '#7A5530'), art('table', '#F1E8D8', '#8E6A43')], created: now - 3 * d, updated: now - 3 * d },
       { ...base, id: 'd4', title: 'Monstera in terracotta pot', description: 'Very happy plant. Needs a bright spot without direct sun.', category: 'Plants', condition: 'Good', dimensions: 'H 110 cm', room: 'Living room', pickup: 'Any time', photos: [art('plant', '#EFE6D6', '#2F7D4F')], created: now - 20 * h, updated: now - 20 * h },
       { ...base, id: 'd5', title: 'City bike, 7 gears', description: 'New tyres this spring. Frame size 56. Lock and key included.', category: 'Outdoor', condition: 'Good', price: '45', room: 'Shed', photos: [art('bike', '#19324A', '#7FD1C7')], status: 'claimed', claimedBy: 'Tom', claimedAt: now - 26 * h, claimMessage: '', claimToken: uid(), created: now - 4 * d, updated: now - 26 * h },
@@ -413,33 +504,84 @@ const Mock = (() => {
       { ...base, id: 'd8', title: 'Round wall mirror', description: 'Photo coming soon.', category: 'Decor', condition: 'Like new', dimensions: 'W 60 × D 3 × H 60 cm', room: 'Hallway', created: now - 6 * h, updated: now - 6 * h },
     ];
   }
-  const load = () => LS.get('demo.items', null) || seed();
-  const save = items => { if (!LS.set('demo.items', items)) throw apiErr('Demo storage is full — remove some photos or reset the demo.', 'QUOTA'); };
-  const view = (it, role) => { const v = { ...it }; delete v.claimToken; if (role !== 'owner') delete v.claimMessage; return v; };
+  function seedSlots() {
+    const at = (days, hh) => { const d = new Date(); d.setHours(hh, 0, 0, 0); d.setDate(d.getDate() + days); return d.getTime(); };
+    const sat = ((6 - new Date().getDay() + 7) % 7) || 7;
+    return [
+      { id: 's1', start: at(sat, 10), end: at(sat, 13) },
+      { id: 's2', start: at(sat + 1, 14), end: at(sat + 1, 17) },
+      { id: 's3', start: at(sat + 4, 18), end: at(sat + 4, 20) },
+    ];
+  }
+  const load = () => LS.get('demo.items2', null) || seed();
+  const save = items => { if (!LS.set('demo.items2', items)) throw apiErr('Demo storage is full — remove some photos or reset the demo.', 'QUOTA'); };
+  const loadSlots = () => LS.get('demo.slots', null) || seedSlots();
+  const view = (it, role) => {
+    const v = { ...it, waitlist: (it.waitlist || []).map(e => role === 'owner' ? { name: e.name, at: e.at, message: e.message, slot: e.slot } : { name: e.name, at: e.at }) };
+    delete v.claimToken; if (role !== 'owner') delete v.claimMessage; return v;
+  };
+  const cleanSlot = (s, slots) => s === 'other' ? 'other' : slots.some(x => x.id === s) ? s : '';
+  const handOn = (it, now) => {
+    const next = (it.waitlist = it.waitlist || []).shift();
+    if (!next) { Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', pickupSlot: '' }); return ''; }
+    Object.assign(it, { status: 'claimed', claimedBy: next.name, claimedAt: now, claimMessage: next.message || '', claimToken: next.token, pickupSlot: next.slot || '' });
+    return next.name;
+  };
   async function handle(req) {
     await new Promise(r => setTimeout(r, 160));
     const role = req.key === OWNERC ? 'owner' : req.key === FRIEND ? 'friend' : null;
     if (!role) throw apiErr('That access code is not right.', 'AUTH');
-    const items = load();
+    const items = load(), slots = loadSlots();
     const find = id => items.find(i => i.id === id);
     const now = Date.now();
+    const person = () => { const n = String(req.name || '').trim().replace(/\s+/g, ' ').slice(0, 60); if (!n) throw apiErr('Please enter your name.', 'INVALID'); return n; };
     switch (req.action) {
-      case 'list': return { ok: true, role, items: items.map(i => view(i, role)), friendCode: role === 'owner' ? FRIEND : undefined, now };
+      case 'list': {
+        const toks = new Set(req.tokens || []), you = {};
+        items.forEach(i => {
+          if (i.claimToken && toks.has(i.claimToken)) { you[i.id] = 'claim'; return; }
+          const p = (i.waitlist || []).findIndex(e => toks.has(e.token)); if (p >= 0) you[i.id] = p + 1;
+        });
+        return { ok: true, role, items: items.map(i => view(i, role)), slots, you, friendCode: role === 'owner' ? FRIEND : undefined, now };
+      }
       case 'claim': {
-        const name = String(req.name || '').trim().replace(/\s+/g, ' ').slice(0, 60);
-        if (!name) throw apiErr('Please enter your name.', 'INVALID');
+        const name = person();
         const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
-        if (it.status === 'claimed') throw apiErr(`Too late — ${it.claimedBy} already called dibs on this.`, 'TAKEN', { item: view(it, role) });
+        if (it.status === 'claimed') throw apiErr(`Too late — ${it.claimedBy} already claimed this. You can join the waitlist.`, 'TAKEN', { item: view(it, role) });
         if (it.status !== 'available') throw apiErr('This item is no longer available.', 'UNAVAILABLE', { item: view(it, role) });
-        Object.assign(it, { status: 'claimed', claimedBy: name, claimedAt: now, claimMessage: String(req.message || '').trim().slice(0, 500), claimToken: uid(), updated: now });
+        Object.assign(it, { status: 'claimed', claimedBy: name, claimedAt: now, claimMessage: String(req.message || '').trim().slice(0, 500), claimToken: uid(), pickupSlot: cleanSlot(req.slot, slots), waitlist: [], updated: now });
         save(items); return { ok: true, token: it.claimToken, item: view(it, role) };
+      }
+      case 'queue': {
+        const name = person();
+        const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
+        if (it.status === 'available') throw apiErr('Good news — this is available again. You can claim it now.', 'AVAILABLE', { item: view(it, role) });
+        if (it.status !== 'claimed') throw apiErr('This item is no longer available.', 'UNAVAILABLE', { item: view(it, role) });
+        const e = { name, message: String(req.message || '').trim().slice(0, 500), slot: cleanSlot(req.slot, slots), token: uid(), at: now };
+        (it.waitlist = it.waitlist || []).push(e); it.updated = now;
+        save(items); return { ok: true, token: e.token, position: it.waitlist.length, item: view(it, role) };
+      }
+      case 'leaveQueue': {
+        const it = find(req.id); if (!it) return { ok: true };
+        const q = it.waitlist || [];
+        const i = role === 'owner' && req.index != null && !req.token ? +req.index : q.findIndex(e => e.token && e.token === req.token);
+        if (i >= 0 && i < q.length) { q.splice(i, 1); it.updated = now; save(items); }
+        return { ok: true, item: view(it, role) };
       }
       case 'unclaim': {
         const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
         if (it.status !== 'claimed') return { ok: true, item: view(it, role) };
-        if (req.token !== it.claimToken && role !== 'owner') throw apiErr('Only the person who called dibs (or the owner) can release this.', 'FORBIDDEN');
-        Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', updated: now });
+        if (req.token !== it.claimToken && role !== 'owner') throw apiErr('Only the person who claimed it (or the owner) can release this.', 'FORBIDDEN');
+        handOn(it, now); it.updated = now;
         save(items); return { ok: true, item: view(it, role) };
+      }
+      case 'setSlot': {
+        const slot = cleanSlot(req.slot, slots), out = [];
+        (req.claims || []).forEach(c => {
+          const it = find(c.id);
+          if (it && it.status === 'claimed' && (role === 'owner' || c.token === it.claimToken)) { it.pickupSlot = slot; it.updated = now; out.push(view(it, role)); }
+        });
+        save(items); return { ok: true, items: out };
       }
     }
     if (role !== 'owner') throw apiErr('Only the owner can do that.', 'FORBIDDEN');
@@ -450,7 +592,7 @@ const Mock = (() => {
         if (!String(src.title || '').trim()) throw apiErr('A title is needed.', 'INVALID');
         let it = src.id ? find(src.id) : null;
         if (src.id && !it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
-        if (!it) { it = { id: uid(), status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', created: now }; items.push(it); }
+        if (!it) { it = { id: uid(), status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', waitlist: [], pickupSlot: '', created: now }; items.push(it); }
         ['title', 'description', 'category', 'condition', 'dimensions', 'price', 'room', 'pickup'].forEach(k => it[k] = String(src[k] || '').trim());
         it.photos = (src.photos || []).slice(0, 10); it.updated = now;
         save(items); return { ok: true, item: view(it, 'owner') };
@@ -458,33 +600,63 @@ const Mock = (() => {
       case 'deleteItem': { const i = items.findIndex(x => x.id === req.id); if (i >= 0) items.splice(i, 1); save(items); return { ok: true }; }
       case 'setStatus': {
         const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
-        if (req.status === 'available') Object.assign(it, { claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '' });
-        it.status = req.status; it.updated = now; save(items); return { ok: true, item: view(it, 'owner') };
+        if (req.status === 'available') {
+          if (it.status === 'claimed') handOn(it, now);
+          else Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', pickupSlot: '', waitlist: [] });
+        } else { it.status = 'gone'; it.waitlist = []; }
+        it.updated = now; save(items); return { ok: true, item: view(it, 'owner') };
+      }
+      case 'saveSlots': {
+        const out = (req.slots || []).map(s => ({ id: /^[\w-]{2,40}$/.test(s.id || '') ? s.id : uid(), start: +s.start, end: +s.end }))
+          .filter(s => s.start && s.end > s.start).sort((a, b) => a.start - b.start).slice(0, 60);
+        LS.set('demo.slots', out); return { ok: true, slots: out };
       }
     }
     throw apiErr('Unknown action', 'BAD_ACTION');
   }
-  return { handle, FRIEND, OWNER: OWNERC, reset() { LS.del('demo.items'); } };
+  return { handle, FRIEND, OWNER: OWNERC, reset() { LS.del('demo.items2'); LS.del('demo.slots'); } };
 })();
 
 /* ---------- formatting ---------- */
 const isRemote = ref => /^(data:|https?:|blob:)/.test(ref);
+// Google's image CDN answers fastest (no redirect); the Drive thumbnail endpoint is the fallback.
+const lh3 = (ref, w) => `https://lh3.googleusercontent.com/d/${encodeURIComponent(ref)}=w${w}`;
+const driveThumb = (ref, w) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(ref)}&sz=w${w}`;
 function photoURL(ref, w = 800) {
   if (!ref) return '';
-  if (isRemote(ref)) return ref;
-  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(ref)}&sz=w${w}`;
+  return isRemote(ref) ? ref : lh3(ref, w);
 }
-function imgTag(ref, w, alt = '') {
+// opts.sizes → responsive srcset (cards); opts.hi → swap to this width once loaded (gallery); opts.eager → above the fold
+function imgTag(ref, w, alt = '', opts = {}) {
   if (!ref) return `<span class="noimg">${icon('camera')}</span>`;
-  return `<img src="${esc(photoURL(ref, w))}" alt="${esc(alt)}" loading="lazy" decoding="async" data-ref="${esc(ref)}" data-w="${w}">`;
+  const drive = !isRemote(ref);
+  const set = drive && opts.sizes ? ` srcset="${[400, 640, 960].map(x => `${esc(lh3(ref, x))} ${x}w`).join(', ')}" sizes="${opts.sizes}"` : '';
+  const hi = drive && opts.hi ? ` data-hi="${esc(lh3(ref, opts.hi))}"` : '';
+  return `<img src="${esc(photoURL(ref, w))}"${set}${hi} alt="${esc(alt)}" loading="${opts.eager ? 'eager' : 'lazy'}"${opts.eager ? ' fetchpriority="high"' : ''} decoding="async" data-ref="${esc(ref)}" data-w="${w}">`;
 }
-// Drive thumbnail failed? try the other Google image host, then show a placeholder.
+// Image CDN failed? try the Drive thumbnail endpoint, then show a placeholder.
 document.addEventListener('error', e => {
   const img = e.target;
   if (!(img instanceof HTMLImageElement) || !img.dataset.ref) return;
-  if (!img.dataset.fb && !isRemote(img.dataset.ref)) { img.dataset.fb = '1'; img.src = `https://lh3.googleusercontent.com/d/${img.dataset.ref}=w${img.dataset.w}`; return; }
+  if (!img.dataset.fb && !isRemote(img.dataset.ref)) {
+    img.dataset.fb = '1'; img.removeAttribute('srcset'); delete img.dataset.hi;
+    img.src = driveThumb(img.dataset.ref, img.dataset.w); return;
+  }
   const ph = document.createElement('span'); ph.className = 'noimg'; ph.innerHTML = icon('camera'); img.replaceWith(ph);
 }, true);
+// show the card-size copy straight away, then swap in the full-size photo once it has downloaded
+function upgradeImg(img) {
+  const hi = img && img.dataset.hi; if (!hi) return;
+  const pre = new Image(); pre.decoding = 'async';
+  pre.onload = () => { if (img.isConnected && img.dataset.hi === hi) { img.src = hi; delete img.dataset.hi; } };
+  pre.src = hi;
+}
+const warmed = new Set();
+function warm(ref, w = 1600) {
+  if (!ref || isRemote(ref)) return;
+  const u = lh3(ref, w); if (warmed.has(u)) return;
+  warmed.add(u); const i = new Image(); i.decoding = 'async'; i.src = u;
+}
 
 function priceLabel(p) {
   const s = String(p ?? '').trim();
@@ -509,6 +681,25 @@ const nameMatch = it => myName && it.claimedBy && it.claimedBy.trim().toLowerCas
 const hasToken = it => it.status === 'claimed' && !!mine[it.id];
 const isMine = it => it.status !== 'available' && (hasToken(it) || nameMatch(it));
 const isNew = it => it.status === 'available' && it.created && Date.now() - it.created < 48 * 36e5;
+const inLine = it => it.status === 'claimed' && !!queued[it.id] && !hasToken(it);
+const qPos = it => S.qpos[it.id] || 0;
+
+/* ---------- pickup slots ---------- */
+const slotById = id => S.slots.find(s => s.id === id);
+const fmtDay = ms => new Date(ms).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function slotLabel(s) {
+  if (!s) return '';
+  const same = new Date(s.start).toDateString() === new Date(s.end).toDateString();
+  return `${fmtDay(s.start)} · ${fmtTime(s.start)}–${same ? fmtTime(s.end) : fmtDay(s.end) + ' ' + fmtTime(s.end)}`;
+}
+const upcomingSlots = () => S.slots.filter(s => s.end > Date.now());
+const slotBooked = id => new Set(S.items.filter(i => i.status === 'claimed' && i.pickupSlot === id).map(i => i.claimedBy.trim().toLowerCase())).size;
+const pickupText = id => id === 'other' ? 'Arranging another time' : slotLabel(slotById(id));
+function normSlots(a) {
+  return (Array.isArray(a) ? a : []).map(s => ({ id: String(s.id || ''), start: +s.start || 0, end: +s.end || 0 }))
+    .filter(s => s.id && s.start && s.end > s.start).sort((x, y) => x.start - y.start);
+}
 
 function normalise(it) {
   return {
@@ -517,6 +708,8 @@ function normalise(it) {
     pickup: String(it.pickup || ''), photos: Array.isArray(it.photos) ? it.photos.filter(Boolean).map(String) : [],
     status: ['available', 'claimed', 'gone'].includes(it.status) ? it.status : 'available', claimedBy: String(it.claimedBy || ''),
     claimedAt: +it.claimedAt || 0, claimMessage: String(it.claimMessage || ''), created: +it.created || 0, updated: +it.updated || 0,
+    pickupSlot: String(it.pickupSlot || ''),
+    waitlist: Array.isArray(it.waitlist) ? it.waitlist.filter(e => e && e.name).map(e => ({ name: String(e.name), at: +e.at || 0, message: String(e.message || ''), slot: String(e.slot || '') })) : [],
   };
 }
 function upsert(raw) {
@@ -545,8 +738,8 @@ function toast(msg, kind = '') {
 function burst(el) {
   if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-  const cols = ['#00A296', '#F3C000', '#005858', '#FFFFFF', '#F3C000'];
-  for (let i = 0; i < 22; i++) {
+  const cols = ['#B45CFF', '#3CCB9A', '#FFB648', '#ECEFF4'];
+  for (let i = 0; i < 16; i++) {
     const p = document.createElement('span'); p.className = 'burst';
     const a = Math.random() * Math.PI * 2, dist = 70 + Math.random() * 110;
     p.style.cssText = `left:${cx}px;top:${cy}px;background:${cols[i % cols.length]};--dx:${Math.cos(a) * dist}px;--dy:${Math.sin(a) * dist - 40}px;--r:${Math.random() * 540}deg`;
@@ -556,10 +749,13 @@ function burst(el) {
 
 /* ---------- rendering: shell ---------- */
 function paintStatic() {
-  document.title = CONFIG.SITE_NAME || 'Dibs';
-  $$('[data-sitename]').forEach(e => e.textContent = CONFIG.SITE_NAME || 'Dibs');
-  $$('[data-initial]').forEach(e => e.textContent = (CONFIG.SITE_NAME || 'D').trim().charAt(0).toUpperCase());
-  $('#tagline').textContent = CONFIG.TAGLINE || '';
+  document.title = CONFIG.SITE_NAME || 'MOVE';
+  $$('[data-sitename]').forEach(e => e.textContent = CONFIG.SITE_NAME || 'MOVE');
+  $$('[data-glyph]').forEach(e => e.textContent = String(CONFIG.GLYPH || '').trim() || (CONFIG.SITE_NAME || 'M').trim().charAt(0).toUpperCase());
+  $$('[data-dest]').forEach(e => { const d = String(CONFIG.DESTINATION || '').trim(); e.textContent = '→ ' + d; e.hidden = !d; });
+  const tl = String(CONFIG.TAGLINE || '').trim(), cut = tl.search(/[.!?]\s/);
+  $('#tagline').innerHTML = cut > 0 ? `${esc(tl.slice(0, cut + 1))} <span class="sub">${esc(tl.slice(cut + 2))}</span>` : esc(tl);
+  $('#tagline').hidden = !tl;
   $$('[data-icon]').forEach(e => e.outerHTML = icon(e.dataset.icon));
   $('#fab').innerHTML = icon('plus');
   $('[data-act=add]', $('#ownerBar')).innerHTML = icon('plus') + 'Add item';
@@ -570,7 +766,7 @@ function renderAll() {
   const owner = S.role === 'owner';
   $('#ownerBar').hidden = !owner;
   $('#fab').classList.toggle('on', owner);
-  if (owner) $('[data-act=pickups]').innerHTML = icon('users') + `Pickups <span class="mono">${S.items.filter(i => i.status === 'claimed').length}</span>`;
+  if (owner) $('[data-act=pickups]').innerHTML = icon('users') + `Pickups <span class="count mono">${S.items.filter(i => i.status === 'claimed').length}</span>`;
   renderDemoBar();
   renderChips();
   renderGrid();
@@ -583,7 +779,7 @@ function renderDemoBar() {
   const bar = $('#demoBar');
   bar.hidden = !DEMO;
   if (!DEMO) return;
-  bar.innerHTML = `<span><b>Demo mode.</b> Nothing leaves this browser. Add your Apps Script URL to <span class="mono">CONFIG.API_URL</span> to go live.</span>
+  bar.innerHTML = `<span><b>Demo mode</b> · Nothing leaves this browser. ${FORCED_DEMO && String(CONFIG.API_URL || '').trim() ? 'Remove <span class="mono">?demo</span> from the address to see the live list.' : 'Add your Apps Script URL to <span class="mono">CONFIG.API_URL</span> to go live.'}</span>
     <button class="lnk" data-act="demo-switch">${S.role === 'owner' ? 'View as a friend' : 'View as owner'}</button>
     <button class="lnk" data-act="demo-reset">Reset demo</button>`;
 }
@@ -593,10 +789,10 @@ function renderChips() {
   const counts = {
     available: all.filter(i => i.status === 'available').length,
     claimed: all.filter(i => i.status === 'claimed').length,
-    mine: all.filter(isMine).length,
+    mine: all.filter(i => isMine(i) || inLine(i)).length,
     all: all.length,
   };
-  const st = [['available', 'Available'], ['claimed', 'Claimed'], ['mine', 'My dibs'], ['all', 'All']];
+  const st = [['available', 'Available'], ['claimed', 'Claimed'], ['mine', 'My claims'], ['all', 'All']];
   $('#statusChips').innerHTML = st.map(([k, l]) =>
     `<button class="chip" data-filter="${k}" aria-pressed="${S.filter === k}">${l}<span class="n">${counts[k]}</span></button>`).join('');
 
@@ -620,22 +816,24 @@ function visibleItems() {
   return S.items.filter(it => {
     if (S.filter === 'available' && it.status !== 'available') return false;
     if (S.filter === 'claimed' && it.status !== 'claimed') return false;
-    if (S.filter === 'mine' && !isMine(it)) return false;
+    if (S.filter === 'mine' && !isMine(it) && !inLine(it)) return false;
     if (S.cat !== 'all' && (it.category || 'Other') !== S.cat) return false;
     if (q && !`${it.title} ${it.description} ${it.category} ${it.room} ${it.claimedBy}`.toLowerCase().includes(q)) return false;
     return true;
   }).sort((a, b) => (rank[a.status] - rank[b.status]) || cmp(a, b));
 }
 
-function cardHTML(it) {
+function cardHTML(it, idx = 99) {
   const m = isMine(it);
   let tag = '';
-  if (it.status === 'claimed') tag = m ? '<span class="tag t-mine">Your dibs</span>' : `<span class="tag t-claimed">Dibs: ${esc(it.claimedBy)}</span>`;
+  if (it.status === 'claimed') tag = m ? '<span class="tag t-mine">Yours</span>'
+    : inLine(it) ? `<span class="tag t-queue">In line${qPos(it) ? ' · #' + qPos(it) : ''}</span>`
+    : `<span class="tag t-claimed">Claimed · ${esc(it.claimedBy)}</span>`;
   else if (it.status === 'gone') tag = '<span class="tag t-gone">Gone</span>';
   else if (isNew(it)) tag = '<span class="tag t-new">New</span>';
   const pl = priceLabel(it.price);
   return `<button class="card is-${it.status}" data-open="${esc(it.id)}" aria-label="${esc(it.title)}">
-    <span class="ph">${imgTag(it.photos[0], 640, it.title)}${tag}${it.photos.length > 1 ? `<span class="pcount">${icon('camera')}${it.photos.length}</span>` : ''}</span>
+    <span class="ph">${imgTag(it.photos[0], 640, it.title, { sizes: '(max-width:560px) 50vw, 300px', eager: idx < 4 })}${tag}${it.photos.length > 1 ? `<span class="pcount">${icon('camera')}${it.photos.length}</span>` : ''}</span>
     <span class="cbody"><span class="ctitle">${esc(it.title)}</span>
       <span class="cmeta"><span class="price${pl === 'Free' ? ' free' : ''}">${esc(pl)}</span>${it.dimensions ? `<span class="dims mono">${esc(shortDims(it.dimensions))}</span>` : ''}</span>
     </span></button>`;
@@ -650,7 +848,7 @@ function renderGrid() {
     let msg;
     if (!S.items.length) msg = S.role === 'owner' ? 'No items yet. Tap <b>Add item</b> to list your first one.' : 'Nothing listed yet — check back soon.';
     else if (S.q) msg = `Nothing matches “${esc(S.q)}”.`;
-    else if (S.filter === 'mine') msg = 'You haven’t called dibs on anything yet.';
+    else if (S.filter === 'mine') msg = 'You haven’t claimed anything yet.';
     else if (S.filter === 'available') msg = 'Everything has been claimed! Look under <b>All</b> to see what went where.';
     else msg = 'Nothing here.';
     empty.innerHTML = icon('box') + `<p>${msg}</p>`;
@@ -674,7 +872,8 @@ function renderFoot() {
 }
 
 /* ---------- detail ---------- */
-const sigOf = it => it ? [it.status, it.claimedBy, it.claimMessage, it.updated, mine[it.id] || ''].join('|') : '';
+const sigOf = it => it ? [it.status, it.claimedBy, it.claimMessage, it.updated, mine[it.id] || '', queued[it.id] || '', S.qpos[it.id] || '',
+  it.pickupSlot, it.waitlist.map(w => w.name).join(','), S.slots.map(s => s.id + s.start + s.end).join()].join('|') : '';
 
 function openDetail(id) {
   const it = byId(id); if (!it) return;
@@ -717,17 +916,18 @@ function refreshDetail() {
   if (!it) { $('#detailDlg').close(); toast('That item was just removed.'); return; }
   if (sigOf(it) === S.openSig) return;
   // keep whatever the person was typing
-  const n = $('#cname')?.value, m = $('#cmsg')?.value;
+  const n = $('#cname')?.value, m = $('#cmsg')?.value, sl = $('input[name=cslot]:checked')?.value;
   S.openSig = sigOf(it);
   $('#claimSlot').innerHTML = claimHTML(it);
   $('#ownerSlot').innerHTML = ownerToolsHTML(it);
   if (n != null && $('#cname')) $('#cname').value = n;
   if (m != null && $('#cmsg')) $('#cmsg').value = m;
+  if (sl) { const r = $(`input[name=cslot][value="${CSS.escape(sl)}"]`); if (r) r.checked = true; }
 }
 
 function galleryHTML(it) {
   const ph = it.photos, n = ph.length, i = Math.min(S.gIdx, Math.max(0, n - 1));
-  return `<div class="gmain" id="gmain">${imgTag(ph[i], 1600, it.title)}
+  return `<div class="gmain" id="gmain">${imgTag(ph[i], 640, it.title, { hi: 1600, eager: true })}
       ${n > 1 ? `<button class="gnav prev" data-g="-1" aria-label="Previous photo">${icon('left')}</button><button class="gnav next" data-g="1" aria-label="Next photo">${icon('right')}</button><span class="gcount">${i + 1} / ${n}</span>` : ''}
     </div>
     ${n > 1 ? `<div class="gthumbs">${ph.map((p, j) => `<button class="gthumb${j === i ? ' on' : ''}" data-gi="${j}" aria-label="Photo ${j + 1}">${imgTag(p, 200)}</button>`).join('')}</div>` : ''}`;
@@ -742,38 +942,86 @@ function goPhoto(i) {
 }
 function bindGallery() {
   const g = $('#gmain'); if (!g) return;
+  upgradeImg($('img', g));
+  const cur = byId(S.openId);
+  if (cur && cur.photos.length > 1) { const n = cur.photos.length; warm(cur.photos[(S.gIdx + 1) % n]); warm(cur.photos[(S.gIdx - 1 + n) % n]); }
   let x0 = null;
   g.addEventListener('pointerdown', e => { x0 = e.clientX; });
   g.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) goPhoto(S.gIdx + (dx < 0 ? 1 : -1)); });
 }
 
+function lastSlot() { const s = LS.get('slot', ''); return s === 'other' || upcomingSlots().some(x => x.id === s) ? s : ''; }
+function myOpenClaims() { return Object.keys(mine).filter(id => { const x = byId(id); return x && x.status === 'claimed'; }); }
+
+function slotPicker(sel) {
+  const ups = upcomingSlots();
+  if (!ups.length) return '';
+  const opt = (v, label, n) => `<label class="slot"><input type="radio" name="cslot" value="${esc(v)}"${v === sel ? ' checked' : ''}><span>${label}</span>${n ? `<span class="n">${n}</span>` : ''}</label>`;
+  return `<div class="field"><span>When can you pick it up?</span><div class="slots">
+    ${ups.map(s => { const b = slotBooked(s.id); return opt(s.id, esc(slotLabel(s)), b ? `${b} booked` : ''); }).join('')}
+    ${opt('other', 'None of these work for me', '')}
+  </div></div>`;
+}
+
+function pickupControl(it) {
+  const ups = upcomingSlots(), cur = it.pickupSlot, curSlot = slotById(cur);
+  if (!ups.length && !curSlot && cur !== 'other') return '';
+  const opts = curSlot && !ups.includes(curSlot) ? [curSlot, ...ups] : ups;
+  const n = myOpenClaims().length;
+  const lost = cur && cur !== 'other' && !curSlot;
+  return `<label class="field"><span>Pickup time</span>
+    <select class="input" data-slotsel>
+      <option value=""${!cur || lost ? ' selected' : ''}>Choose a time…</option>
+      ${opts.map(s => `<option value="${esc(s.id)}"${s.id === cur ? ' selected' : ''}>${esc(slotLabel(s))}</option>`).join('')}
+      <option value="other"${cur === 'other' ? ' selected' : ''}>None of these work for me</option>
+    </select>
+    ${lost ? '<span class="hint">The time you picked was removed. Please choose another.</span>' : n > 1 ? `<span class="hint">Applies to all ${n} items you’ve claimed.</span>` : ''}</label>`;
+}
+
 function claimHTML(it) {
+  const owner = S.role === 'owner', id = esc(it.id);
   if (it.status === 'available') {
-    const owner = S.role === 'owner';
     return `<div class="claimbox">
       <h3>${icon('hand')}Want it?</h3>
       <label class="field"><span>${owner ? 'Name (claiming for someone else?)' : 'Your name'}</span>
         <input class="input" id="cname" maxlength="60" autocomplete="given-name" value="${owner ? '' : esc(myName)}" placeholder="e.g. Anna"></label>
+      ${slotPicker(lastSlot())}
       <label class="field"><span>Note for ${ownerName()} (optional)</span>
-        <textarea class="input" id="cmsg" maxlength="500" rows="2" placeholder="When could you pick it up?"></textarea></label>
-      <button class="btn primary big" data-act="claim" data-id="${esc(it.id)}">Call dibs</button>
+        <textarea class="input" id="cmsg" maxlength="500" rows="2" placeholder="${upcomingSlots().length ? 'Anything to add?' : 'When could you pick it up?'}"></textarea></label>
+      <button class="btn primary big" data-act="claim" data-id="${id}">Claim it</button>
       <p class="small">First come, first served. ${ownerName(true)} gets an email straight away.</p>
     </div>`;
   }
   if (it.status === 'claimed') {
+    const q = it.waitlist.length;
     if (hasToken(it)) return `<div class="claimbox mine">
       <h3>${icon('check')}It’s yours!</h3>
-      <p>You called dibs ${esc(timeAgo(it.claimedAt))}. ${ownerName(true)} has been notified and will be in touch about pickup.</p>
-      <div class="btnrow"><button class="btn" data-act="release" data-id="${esc(it.id)}">${icon('undo')}Changed my mind</button></div>
+      <p>You claimed this ${esc(timeAgo(it.claimedAt))}. ${ownerName(true)} has been notified${upcomingSlots().length || slotById(it.pickupSlot) ? '.' : ' and will be in touch about pickup.'}</p>
+      ${pickupControl(it)}
+      ${q ? `<p class="small">${q === 1 ? '1 person is' : q + ' people are'} waiting. If you change your mind, it passes to ${esc(it.waitlist[0].name)}.</p>` : ''}
+      <div class="btnrow"><button class="btn" data-act="release" data-id="${id}">${icon('undo')}Changed my mind</button></div>
     </div>`;
     if (nameMatch(it)) return `<div class="claimbox mine">
-      <h3>${icon('check')}You called dibs</h3>
+      <h3>${icon('check')}You claimed this</h3>
       <p>Claimed as <b>${esc(it.claimedBy)}</b> ${esc(timeAgo(it.claimedAt))}. Changed your mind? Ask ${ownerName()} to release it.</p>
     </div>`;
+    if (inLine(it)) {
+      const p = qPos(it);
+      return `<div class="claimbox queued">
+        <h3>${icon('users')}${p ? `You’re #${p} in line` : 'You’re on the waitlist'}</h3>
+        <p>Claimed by <b>${esc(it.claimedBy)}</b>. If it comes to you, it becomes yours automatically and shows up under <b>My claims</b>.</p>
+        <div class="btnrow"><button class="btn" data-act="leave-queue" data-id="${id}">Leave the waitlist</button></div>
+      </div>`;
+    }
     return `<div class="claimbox claimed">
       <h3>${icon('star')}Claimed</h3>
-      <p><b>${esc(it.claimedBy)}</b> called dibs ${esc(timeAgo(it.claimedAt))}.</p>
-      <p class="small">If they change their mind it will show up as available again.</p>
+      <p>Claimed by <b>${esc(it.claimedBy)}</b> ${esc(timeAgo(it.claimedAt))}.${q ? ` ${q === 1 ? '1 person' : q + ' people'} in line.` : ''}</p>
+      <p class="small">Join the waitlist. If ${esc(it.claimedBy)} changes their mind, it passes to the next person automatically.</p>
+      <div class="joinq">
+        <label class="sr" for="cname">${owner ? 'Name' : 'Your name'}</label>
+        <input class="input" id="cname" maxlength="60" autocomplete="given-name" value="${owner ? '' : esc(myName)}" placeholder="${owner ? 'Name' : 'Your name'}">
+        <button class="btn" data-act="queue" data-id="${id}">${icon('users')}Join the waitlist</button>
+      </div>
     </div>`;
   }
   return `<div class="claimbox gone"><h3>${icon('box')}Found a new home</h3>
@@ -782,20 +1030,26 @@ function claimHTML(it) {
 
 function ownerToolsHTML(it) {
   if (S.role !== 'owner') return '';
-  const id = esc(it.id);
+  const id = esc(it.id), next = it.waitlist[0];
   const b = [`<button class="btn" data-act="edit" data-id="${id}">${icon('edit')}Edit</button>`];
   if (it.status === 'claimed') {
     b.push(`<button class="btn primary" data-act="gone" data-id="${id}">${icon('check')}Handed over</button>`);
-    b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('undo')}Release claim</button>`);
+    b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('undo')}${next ? 'Pass to ' + esc(next.name) : 'Release claim'}</button>`);
   } else if (it.status === 'available') {
     b.push(`<button class="btn" data-act="gone" data-id="${id}">${icon('box')}Mark as gone</button>`);
   } else {
     b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('undo')}Make available again</button>`);
   }
   b.push(`<button class="btn danger" data-act="delete" data-id="${id}">${icon('trash')}Delete</button>`);
+  const pk = it.status === 'claimed' && (S.slots.length || it.pickupSlot)
+    ? `<div class="hint">Pickup: <b>${esc(pickupText(it.pickupSlot) || 'no time chosen yet')}</b></div>` : '';
+  const wl = it.status === 'claimed' && it.waitlist.length ? `<div><div class="hint">Waitlist</div><ol class="queue">${it.waitlist.map((w, i) => `
+      <li><span class="pos mono">${i + 1}</span><span><b>${esc(w.name)}</b>${w.message ? ` <span class="hint">· ${esc(w.message)}</span>` : ''}</span>
+        <button class="x" data-act="q-remove" data-id="${id}" data-i="${i}" aria-label="Remove ${esc(w.name)} from the waitlist">${icon('x')}</button></li>`).join('')}</ol></div>` : '';
   return `<div class="owner-tools">
     <div class="lbl"><span class="pill-owner">Owner</span>Only you see this</div>
     ${it.status !== 'available' && it.claimMessage ? `<div><div class="hint">Note from ${esc(it.claimedBy)}:</div><div class="claimbox claimed" style="padding:10px 12px;margin-top:4px"><p style="white-space:pre-wrap">${esc(it.claimMessage)}</p></div></div>` : ''}
+    ${pk}${wl}
     <div class="btnrow">${b.join('')}</div>
   </div>`;
 }
@@ -805,9 +1059,11 @@ async function doClaim(btn) {
   const id = btn.dataset.id, nameEl = $('#cname'), msgEl = $('#cmsg');
   const name = nameEl.value.trim();
   if (!name) { nameEl.focus(); nameEl.setAttribute('aria-invalid', 'true'); toast('Add your name so ' + (OWNER_RAW || 'the owner') + ' knows who it is.', 'err'); return; }
-  btn.disabled = true; btn.textContent = 'Calling dibs…';
+  btn.disabled = true; btn.textContent = 'Claiming…';
   try {
-    const r = await api('claim', { id, name, message: msgEl.value.trim() });
+    const slot = $('input[name=cslot]:checked')?.value || '';
+    const r = await api('claim', { id, name, message: msgEl.value.trim(), slot });
+    if (slot) LS.set('slot', slot);
     if (S.role !== 'owner') { myName = name; LS.set('name', name); }
     mine[id] = r.token; LS.set('mine', mine);
     upsert(r.item);
@@ -818,8 +1074,35 @@ async function doClaim(btn) {
     if (e.data && e.data.item) upsert(e.data.item);
     toast(e.message, 'err');
     renderAll();
-    if (btn.isConnected) { btn.disabled = false; btn.textContent = 'Call dibs'; }
+    if (btn.isConnected) { btn.disabled = false; btn.textContent = 'Claim it'; }
   }
+}
+
+async function doQueue(btn) {
+  const id = btn.dataset.id, nameEl = $('#cname'), name = nameEl.value.trim();
+  if (!name) { nameEl.focus(); nameEl.setAttribute('aria-invalid', 'true'); toast('Add your name to join the waitlist.', 'err'); return; }
+  const prev = btn.innerHTML; btn.disabled = true; btn.textContent = 'Joining…';
+  try {
+    const r = await api('queue', { id, name });
+    if (S.role !== 'owner') { myName = name; LS.set('name', name); queued[id] = r.token; LS.set('queued', queued); S.qpos[id] = r.position; }
+    upsert(r.item);
+    toast(S.role === 'owner' ? `Added ${name} to the waitlist.` : `You’re #${r.position} in line.`, 'ok');
+    renderAll();
+  } catch (e) {
+    if (e.data && e.data.item) upsert(e.data.item);
+    toast(e.message, e.code === 'AVAILABLE' ? 'ok' : 'err');
+    renderAll();
+    if (btn.isConnected) { btn.disabled = false; btn.innerHTML = prev; }
+  }
+}
+
+async function saveSlots(list, okMsg) {
+  try {
+    const r = await api('saveSlots', { slots: list.map(s => ({ id: s.id, start: s.start, end: s.end })) });
+    S.slots = normSlots(r.slots);
+    toast(okMsg, 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+  renderAll();
 }
 
 async function simple(btn, action, payload, okMsg, confirmMsg) {
@@ -848,9 +1131,9 @@ async function copyText(text, okMsg) {
 async function invite() {
   if (!S.friendCode) { toast('Invite code not available.', 'err'); return; }
   const url = `${location.origin}${location.pathname}#k=${encodeURIComponent(S.friendCode)}`;
-  const text = `Call dibs on these items: ${url}`;
+  const text = `Have a look and claim what you’d like: ${url}`;
   if (navigator.share && matchMedia('(pointer:coarse)').matches) {
-    try { await navigator.share({ title: CONFIG.SITE_NAME || 'Dibs', text: 'Call dibs on these items', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.share({ title: CONFIG.SITE_NAME || 'MOVE', text: 'Have a look and claim what you’d like', url }); return; } catch (e) { if (e.name === 'AbortError') return; }
   }
   copyText(text, 'Invite link copied — paste it into your group chat.');
 }
@@ -873,13 +1156,39 @@ document.addEventListener('click', async e => {
   switch (t.dataset.act) {
     case 'claim': return doClaim(t);
     case 'release': {
-      const r = await simple(t, 'unclaim', { id, token: mine[id] }, 'Released — it’s available again.', 'Release your dibs on this item?');
-      if (r) { delete mine[id]; LS.set('mine', mine); renderAll(); }
+      const next = it && it.waitlist[0];
+      const r = await simple(t, 'unclaim', { id, token: mine[id] }, null,
+        next ? `Release your claim? It will pass to ${next.name}, who’s next in line.` : 'Release your claim on this item?');
+      if (r) {
+        delete mine[id]; LS.set('mine', mine);
+        toast(r.item && r.item.status === 'claimed' ? `Released — it’s passed to ${r.item.claimedBy}.` : 'Released — it’s available again.', 'ok');
+        renderAll();
+      }
       return;
     }
+    case 'queue': return doQueue(t);
+    case 'leave-queue': {
+      const r = await simple(t, 'leaveQueue', { id, token: queued[id] }, 'You’ve left the waitlist.', 'Leave the waitlist for this item?');
+      if (r) { delete queued[id]; delete S.qpos[id]; LS.set('queued', queued); renderAll(); }
+      return;
+    }
+    case 'q-remove': {
+      const w = it && it.waitlist[+t.dataset.i];
+      return simple(t, 'leaveQueue', { id, index: +t.dataset.i }, 'Removed from the waitlist.', w ? `Remove ${w.name} from the waitlist?` : null);
+    }
+    case 'slot-del': {
+      const sid = t.dataset.sid, b = slotBooked(sid);
+      if (b && !confirm(`${b === 1 ? '1 person has' : b + ' people have'} booked this time. Remove it anyway? They’ll be asked to choose another.`)) return;
+      return saveSlots(S.slots.filter(s => s.id !== sid), 'Time removed.');
+    }
     case 'gone': return simple(t, 'setStatus', { id, status: 'gone' }, it && it.status === 'claimed' ? `Marked as handed over to ${it.claimedBy}.` : 'Marked as gone.');
-    case 'avail': return simple(t, 'setStatus', { id, status: 'available' }, 'Available again.',
-      it && it.status === 'claimed' ? `Release ${it.claimedBy}’s claim? They won’t be notified automatically.` : null);
+    case 'avail': {
+      const next = it && it.status === 'claimed' && it.waitlist[0];
+      const r = await simple(t, 'setStatus', { id, status: 'available' }, null,
+        it && it.status === 'claimed' ? (next ? `Release ${it.claimedBy}’s claim? It passes to ${next.name}, who’s next in line.` : `Release ${it.claimedBy}’s claim? They won’t be notified automatically.`) : null);
+      if (r) toast(r.item && r.item.status === 'claimed' ? `Passed to ${r.item.claimedBy}.` : 'Available again.', 'ok');
+      return;
+    }
     case 'delete': {
       const r = await simple(t, 'deleteItem', { id }, 'Deleted.', `Delete “${it ? it.title : 'this item'}” for good? Its photos go to your Drive bin.`);
       if (r) { S.items = S.items.filter(x => x.id !== id); $('#detailDlg').close(); renderAll(); }
@@ -887,7 +1196,7 @@ document.addEventListener('click', async e => {
     }
     case 'edit': return openEditor(id);
     case 'add': return openEditor(null);
-    case 'pickups': renderPickups(); return $('#pickupsDlg').showModal();
+    case 'pickups': return openPickups();
     case 'copy-pickups': return copyText(pickupsText(), 'Pickup list copied.');
     case 'invite': return invite();
     case 'refresh': return refresh(false);
@@ -912,6 +1221,41 @@ $('#detailDlg').addEventListener('close', () => { S.openId = null; });
 
 $('#q').addEventListener('input', e => { S.q = e.target.value; renderGrid(); });
 $('#sort').addEventListener('change', e => { S.sort = e.target.value; LS.set('sort', S.sort); renderGrid(); });
+
+// pickup time on a claim you hold — applies to every item this browser has claimed
+document.addEventListener('change', async e => {
+  const sel = e.target.closest && e.target.closest('[data-slotsel]'); if (!sel) return;
+  const claims = myOpenClaims().map(id => ({ id, token: mine[id] }));
+  sel.disabled = true;
+  try {
+    const r = await api('setSlot', { slot: sel.value, claims });
+    (r.items || []).forEach(upsert);
+    if (sel.value) LS.set('slot', sel.value);
+    toast(sel.value === 'other' ? `Noted. ${OWNER_RAW || 'The owner'} will arrange another time with you.` : sel.value ? `Pickup set for ${pickupText(sel.value)}.` : 'Pickup time cleared.', 'ok');
+  } catch (err) { toast(err.message, 'err'); }
+  finally { sel.disabled = false; renderAll(); }
+});
+
+// owner adds a pickup time
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'slotForm') return;
+  e.preventDefault();
+  const f = e.target, day = f.elements.day.value, a = f.elements.from.value, b = f.elements.to.value;
+  if (!day || !a || !b) { toast('Pick a day and times.', 'err'); return; }
+  const start = new Date(`${day}T${a}`).getTime(), end = new Date(`${day}T${b}`).getTime();
+  if (!(end > start)) { toast('The end time needs to be after the start.', 'err'); return; }
+  const btn = f.querySelector('button[type=submit]'); btn.disabled = true;
+  await saveSlots([...S.slots, { id: '', start, end }], `Added ${slotLabel({ start, end })}.`);
+  btn.disabled = false;
+});
+
+// start fetching the full-size cover when someone lingers on a card
+let hoverT;
+document.addEventListener('pointerover', e => {
+  const c = e.target.closest && e.target.closest('.card[data-open]');
+  clearTimeout(hoverT);
+  if (c) hoverT = setTimeout(() => { const it = byId(c.dataset.open); if (it) warm(it.photos[0]); }, 120);
+});
 
 /* ---------- editor (owner) ---------- */
 let E = null;
@@ -1067,35 +1411,75 @@ $('#editorForm').addEventListener('submit', async e => {
 });
 
 /* ---------- pickups (owner) ---------- */
-function pickupGroups() {
+function groupByPerson(items) {
   const groups = {};
-  S.items.filter(i => i.status === 'claimed').forEach(it => {
+  items.forEach(it => {
     const k = it.claimedBy.trim().toLowerCase();
     (groups[k] = groups[k] || { name: it.claimedBy.trim(), items: [] }).items.push(it);
   });
   return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
 }
-function renderPickups() {
-  const gs = pickupGroups();
+// claimed items grouped by pickup time (chronological), then by person
+function pickupSections() {
+  const secs = new Map();
+  S.items.filter(i => i.status === 'claimed').forEach(it => {
+    const k = slotById(it.pickupSlot) ? it.pickupSlot : it.pickupSlot === 'other' ? 'other' : '';
+    if (!secs.has(k)) secs.set(k, []);
+    secs.get(k).push(it);
+  });
+  const order = [...S.slots.map(s => s.id).filter(k => secs.has(k)), ...['other', ''].filter(k => secs.has(k))];
+  return order.map(k => ({
+    label: k === '' ? (S.slots.length ? 'No time chosen yet' : '') : k === 'other' ? 'Arranging another time' : slotLabel(slotById(k)),
+    groups: groupByPerson(secs.get(k)),
+  }));
+}
+const todayISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+function openPickups() {
+  const t = todayISO();
   $('#pickupsBody').innerHTML = `
-    <div class="dhead"><h2>Pickups</h2><div class="btnrow">
-      ${gs.length ? `<button class="btn" data-act="copy-pickups">Copy list</button>` : ''}
+    <div class="dhead"><h2>Pickups</h2><div class="btnrow"><span id="pkCopy"></span>
       <button class="x" data-close="pickupsDlg" aria-label="Close">${icon('x')}</button></div></div>
-    <div class="plist">${gs.length ? gs.map(g => `
-      <section class="pgroup"><h3>${esc(g.name)} <span>${g.items.length} item${g.items.length > 1 ? 's' : ''}</span></h3>
-        ${g.items.sort((a, b) => a.claimedAt - b.claimedAt).map(it => `
-          <div class="prow">
-            <div class="pimg">${imgTag(it.photos[0], 160)}</div>
-            <div><button class="pt" data-open="${esc(it.id)}">${esc(it.title)}</button>
-              <div class="pm">${esc(priceLabel(it.price))} · claimed ${esc(timeAgo(it.claimedAt))}</div>
-              ${it.claimMessage ? `<div class="pmsg">${esc(it.claimMessage)}</div>` : ''}</div>
-            <button class="btn" data-act="gone" data-id="${esc(it.id)}" title="Mark as handed over">${icon('check')}<span>Handed over</span></button>
-          </div>`).join('')}
-      </section>`).join('') : `<div class="empty">${icon('users')}<p>No open claims right now.</p></div>`}
-    </div>`;
+    <section class="slotmgr">
+      <div><h3>Times you’re around</h3><p class="hint">People pick one of these when they claim something.</p></div>
+      <div class="slotchips" id="slotChips"></div>
+      <form class="slotadd" id="slotForm" novalidate>
+        <label class="field"><span>Day</span><input class="input" type="date" name="day" min="${t}" value="${t}" required></label>
+        <label class="field"><span>From</span><input class="input" type="time" name="from" value="10:00" step="900" required></label>
+        <label class="field"><span>To</span><input class="input" type="time" name="to" value="12:00" step="900" required></label>
+        <button class="btn primary" type="submit">${icon('plus')}Add time</button>
+      </form>
+    </section>
+    <div class="plist" id="plist"></div>`;
+  renderPickups();
+  $('#pickupsDlg').showModal();
+}
+const groupHTML = g => `
+  <section class="pgroup"><h3>${esc(g.name)} <span>${g.items.length} item${g.items.length > 1 ? 's' : ''}</span></h3>
+    ${g.items.sort((a, b) => a.claimedAt - b.claimedAt).map(it => `
+      <div class="prow">
+        <div class="pimg">${imgTag(it.photos[0], 160)}</div>
+        <div><button class="pt" data-open="${esc(it.id)}">${esc(it.title)}</button>
+          <div class="pm">${esc(priceLabel(it.price))} · claimed ${esc(timeAgo(it.claimedAt))}${it.waitlist.length ? ` · ${it.waitlist.length} waiting` : ''}</div>
+          ${it.claimMessage ? `<div class="pmsg">${esc(it.claimMessage)}</div>` : ''}</div>
+        <button class="btn" data-act="gone" data-id="${esc(it.id)}" title="Mark as handed over">${icon('check')}<span>Handed over</span></button>
+      </div>`).join('')}
+  </section>`;
+function renderPickups() {
+  if (!$('#plist')) return;
+  const secs = pickupSections(), now = Date.now();
+  $('#pkCopy').innerHTML = secs.length ? `<button class="btn" data-act="copy-pickups">Copy list</button>` : '';
+  $('#slotChips').innerHTML = S.slots.length ? S.slots.map(s => {
+    const b = slotBooked(s.id);
+    return `<span class="slotchip${s.end < now ? ' past' : ''}"><span>${esc(slotLabel(s))}</span>${b ? `<span class="n">${b} booked</span>` : ''}
+      <button type="button" data-act="slot-del" data-sid="${esc(s.id)}" aria-label="Remove this time">${icon('x')}</button></span>`;
+  }).join('') : '<span class="hint">No times yet. Add the days and hours you’ll be home.</span>';
+  $('#plist').innerHTML = secs.length
+    ? secs.map(sec => (sec.label ? `<div class="pslot-h">${esc(sec.label)}</div>` : '') + sec.groups.map(groupHTML).join('')).join('')
+    : `<div class="empty">${icon('users')}<p>No open claims right now.</p></div>`;
 }
 function pickupsText() {
-  return pickupGroups().map(g => `${g.name}:\n` + g.items.map(it => `  • ${it.title} (${priceLabel(it.price)})${it.claimMessage ? ' — “' + it.claimMessage.replace(/\s+/g, ' ') + '”' : ''}`).join('\n')).join('\n\n');
+  return pickupSections().map(sec => (sec.label ? sec.label.toUpperCase() + '\n' : '') + sec.groups.map(g => `${g.name}:\n` +
+    g.items.map(it => `  • ${it.title} (${priceLabel(it.price)})${it.claimMessage ? ' — “' + it.claimMessage.replace(/\s+/g, ' ') + '”' : ''}`).join('\n')).join('\n\n')).join('\n\n\n');
 }
 
 /* ---------- gate, session, refresh ---------- */
@@ -1125,7 +1509,7 @@ $('#gateForm').addEventListener('submit', async e => {
   const prevKey = S.key;
   S.key = code;
   try {
-    const r = await api('list');
+    const r = await listReq();
     LS.set('key', code);
     applyList(r);
     showApp(); renderAll();
@@ -1137,7 +1521,7 @@ $('#gateForm').addEventListener('submit', async e => {
 });
 
 function signOut(msg) {
-  LS.del('key'); S.key = null; S.role = null; S.items = [];
+  LS.del('key'); LS.del('cache'); S.key = null; S.role = null; S.items = []; S.slots = [];
   showGate('friend', msg || '');
 }
 
@@ -1145,8 +1529,25 @@ function applyList(r) {
   S.role = r.role;
   S.friendCode = r.friendCode || '';
   S.items = (r.items || []).map(normalise);
+  S.slots = normSlots(r.slots);
   S.lastSync = Date.now(); S.offline = false;
-  pruneMine();
+  if (r.you && typeof r.you === 'object') reconcile(r.you, r._sent || new Set()); else pruneMine();
+  // remembered so the next visit can show the list instantly while it refreshes
+  if (!DEMO) LS.set('cache', { key: S.key, role: S.role, items: r.items || [], slots: r.slots || [] });
+}
+// trust the server about which claims / waitlist places this browser holds (only for tokens sent with that request)
+function reconcile(you, sent) {
+  const won = [];
+  for (const [id, tok] of Object.entries(queued)) {
+    if (!sent.has(tok)) continue;
+    if (you[id] === 'claim') { mine[id] = tok; delete queued[id]; won.push(id); }
+    else if (typeof you[id] !== 'number') delete queued[id];
+  }
+  for (const [id, tok] of Object.entries(mine)) if (sent.has(tok) && you[id] !== 'claim') delete mine[id];
+  S.qpos = {};
+  for (const [id, v] of Object.entries(you)) if (typeof v === 'number') S.qpos[id] = v;
+  LS.set('mine', mine); LS.set('queued', queued);
+  won.forEach(id => { const it = byId(id); if (it) setTimeout(() => toast(`Good news: “${it.title}” passed to you. It’s yours!`, 'ok'), 300); });
 }
 
 let refreshing = false;
@@ -1154,7 +1555,7 @@ async function refresh(silent = true) {
   if (refreshing || !S.key) return;
   refreshing = true;
   try {
-    applyList(await api('list'));
+    applyList(await listReq());
     renderAll();
     if (!silent) toast('Up to date.');
   } catch (e) {
@@ -1175,7 +1576,7 @@ window.addEventListener('hashchange', async () => {
   const prevKey = S.key;
   S.key = k.trim();
   try {
-    applyList(await api('list'));
+    applyList(await listReq());
     LS.set('key', S.key);
     showApp(); renderAll();
     toast(S.role === 'owner' ? 'Signed in as owner.' : 'You’re in.', 'ok');
@@ -1198,13 +1599,17 @@ async function boot() {
     if (!S.key) { S.key = Mock.FRIEND; LS.set('key', S.key); }
   }
   if (!S.key) return showGate('friend');
-  showApp(); renderSkeleton();
+  showApp();
+  const cached = !DEMO && LS.get('cache', null);
+  if (cached && cached.key === S.key) { S.role = cached.role; S.items = (cached.items || []).map(normalise); S.slots = normSlots(cached.slots); renderAll(); }
+  else renderSkeleton();
   try {
-    applyList(await api('list'));
+    applyList(await listReq());
     renderAll();
   } catch (e) {
     if (e.code === 'AUTH') { LS.del('key'); S.key = null; return showGate('friend', 'That invite code didn’t work — check the link you were sent.'); }
     S.offline = true;
+    if (S.items.length) { renderFoot(); toast(e.message, 'err'); return; }
     $('#grid').innerHTML = '';
     $('#empty').hidden = false;
     $('#empty').innerHTML = icon('refresh') + `<p>${esc(e.message)}</p><p><button class="btn" data-act="refresh">Try again</button></p>`;
