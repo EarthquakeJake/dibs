@@ -6,6 +6,10 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#0B0F17">
 <title>MOVE</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="MOVE">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0F17'/%3E%3Crect x='5' y='5' width='54' height='54' rx='10' fill='none' stroke='%23B45CFF' stroke-width='3'/%3E%3Ctext x='32' y='44' font-weight='700' font-size='32' text-anchor='middle' fill='%23CB8BFF'%3E%E6%90%AC%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -275,6 +279,8 @@ dialog[open]{animation:pop .18s ease-out}
 .padd{aspect-ratio:1;border:1px dashed var(--line-2);border-radius:8px;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;text-align:center;padding:6px;transition:border-color .15s,color .15s}
 .padd:hover{border-color:var(--neon);color:var(--neon-soft)}
 .padd svg{width:22px;height:22px}
+.padd small{font-size:11.5px;font-weight:400;color:var(--muted)}
+.photos.drop{outline:1px dashed var(--neon);outline-offset:6px;border-radius:10px}
 .hint{font-size:12.5px;color:var(--muted)}
 .efoot{position:sticky;bottom:0;display:flex;gap:10px;justify-content:flex-end;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line);margin-top:20px}
 
@@ -1286,8 +1292,8 @@ function openEditor(id) {
   $('#editorForm').innerHTML = `
     <div class="dhead"><h2>${it ? 'Edit item' : 'Add an item'}</h2><button type="button" class="x" data-act="editor-cancel" aria-label="Close">${icon('x')}</button></div>
     <div class="eform">
-      <div class="c6 field"><span>Photos — the first one is the cover</span><div class="photos" id="photoGrid"></div>
-        <span class="hint">On your phone you can take photos straight from here. Photos are resized before uploading.</span></div>
+      <div class="c6 field"><span>Photos — up to 10, the first one is the cover</span><div class="photos" id="photoGrid"></div>
+        <span class="hint">Select several at once, or drag them in. Use the arrow on a photo to move it forward.</span></div>
       <label class="c6 field"><span>Title *</span><input class="input" name="title" required maxlength="120" value="${v('title')}" placeholder="e.g. Oak dining table"></label>
       <label class="c6 field"><span>Description</span><textarea class="input" name="description" maxlength="4000" rows="4" placeholder="Anything people should know: wear and tear, what’s included, why you’re letting it go…">${v('description')}</textarea></label>
       <label class="c3 field"><span>Category</span><input class="input" name="category" list="catList" maxlength="40" value="${v('category')}" placeholder="Furniture">
@@ -1329,7 +1335,7 @@ function renderPhotoGrid() {
         <button type="button" data-act="ph-del" data-i="${i}" aria-label="Remove photo">${icon('x')}</button>
       </span>
     </div>`).join('') +
-    (E.photos.length < 10 ? `<label class="padd">${icon('camera')}<span>Add photos</span><input type="file" accept="image/*" multiple hidden id="photoInput"></label>` : '');
+    (E.photos.length < 10 ? `<label class="padd">${icon('camera')}<span>${E.photos.length ? 'Add more' : 'Add photos'}</span><small>${E.photos.length}/10</small><input type="file" accept="image/*" multiple hidden id="photoInput"></label>` : '');
   $('#photoInput')?.addEventListener('change', onPhotos);
 }
 
@@ -1345,10 +1351,15 @@ async function resizeImage(file, max = 1600, quality = 0.82) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-async function onPhotos(e) {
-  const files = [...e.target.files].slice(0, 10 - E.photos.length);
-  const lbl = e.target.closest('.padd');
-  if (lbl) lbl.querySelector('span').textContent = 'Processing…';
+const onPhotos = e => addPhotos(e.target.files);
+async function addPhotos(list) {
+  if (!E) return;
+  const imgs = [...list].filter(f => /^image\//.test(f.type));
+  const room = 10 - E.photos.length, files = imgs.slice(0, room);
+  if (imgs.length > room) toast(room ? `Only ${room} more fit — 10 photos max.` : '10 photos max.', 'err');
+  if (!files.length) return;
+  const lbl = $('#photoGrid .padd span');
+  if (lbl) lbl.textContent = 'Processing…';
   for (const f of files) {
     try { const data = await resizeImage(f, DEMO ? 900 : 1600, DEMO ? 0.72 : 0.82); E.photos.push({ data, preview: data }); E.dirty = true; }
     catch (err) { toast(err.message, 'err'); }
@@ -1356,6 +1367,15 @@ async function onPhotos(e) {
   renderPhotoGrid();
 }
 
+$('#editorForm').addEventListener('dragover', e => {
+  const g = e.target.closest('#photoGrid'); if (!g || !E) return;
+  e.preventDefault(); g.classList.add('drop');
+});
+$('#editorForm').addEventListener('dragleave', e => { const g = e.target.closest('#photoGrid'); if (g && !g.contains(e.relatedTarget)) g.classList.remove('drop'); });
+$('#editorForm').addEventListener('drop', e => {
+  const g = e.target.closest('#photoGrid'); if (!g || !E) return;
+  e.preventDefault(); g.classList.remove('drop'); addPhotos(e.dataTransfer.files);
+});
 $('#editorForm').addEventListener('input', () => { if (E) E.dirty = true; });
 $('#editorForm').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || !E) return;
