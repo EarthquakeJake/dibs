@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>MOVE self-test</title>
+<style>
+:root{--bg:#0B0F17;--surface:#121722;--text:#ECEFF4;--muted:#8F9AAE;--line:#232B3A;--ok:#3CCB9A;--bad:#FF7A85;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
+main{max-width:860px;margin:0 auto;padding:28px 16px 60px}
+h1{margin:0 0 4px;font-size:22px}
+p{margin:0 0 16px;color:var(--muted)}
+#sum{padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;margin-bottom:16px}
+#sum.ok{color:var(--ok);border-color:rgba(60,203,154,.4)}
+#sum.bad{color:var(--bad);border-color:rgba(255,122,133,.4)}
+ol{margin:0;padding:0;list-style:none;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+li{padding:8px 12px;border-bottom:1px solid var(--line);font-size:14px;display:flex;gap:10px}
+li:last-child{border-bottom:0}
+li b{flex:none;width:3.2em}
+li.ok b{color:var(--ok)}
+li.bad b{color:var(--bad)}
+li code{display:block;color:var(--bad);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+.group{background:var(--surface);color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+iframe{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>MOVE self-test</h1>
+  <p>Runs against the demo data in a hidden copy of the page (<code>index.html?demo</code>). It never touches the live list. Open it from the site address, not as a local file. Run it before every upload.</p>
+  <div id="sum">Running…</div>
+  <ol id="out"></ol>
+</main>
+<iframe id="app" src="index.html?demo" title="Page under test"></iframe>
+<script>
+(() => {
+  'use strict';
+  const out = document.getElementById('out'), sum = document.getElementById('sum');
+  let pass = 0, fail = 0;
+  const group = name => { const li = document.createElement('li'); li.className = 'group'; li.textContent = name; out.append(li); };
+  const report = (name, err) => {
+    const li = document.createElement('li'); li.className = err ? 'bad' : 'ok';
+    li.innerHTML = `<b>${err ? 'FAIL' : 'ok'}</b><span></span>`;
+    li.lastChild.textContent = name;
+    if (err) { const c = document.createElement('code'); c.textContent = err; li.lastChild.append(c); }
+    out.append(li); err ? fail++ : pass++;
+  };
+  const eq = (a, b) => { const x = JSON.stringify(a), y = JSON.stringify(b); if (x !== y) throw new Error(`expected ${y}\n     got ${x}`); };
+  const ok = (v, msg) => { if (!v) throw new Error(msg || 'expected true'); };
+  async function test(name, fn) { try { await fn(); report(name); } catch (e) { report(name, e && e.message ? e.message : String(e)); } }
+  async function rejects(p, code) {
+    try { await p; } catch (e) { if (e.code !== code) throw new Error(`expected error ${code}, got ${e.code}: ${e.message}`); return; }
+    throw new Error(`expected error ${code}, but it succeeded`);
+  }
+
+  async function run(T) {
+    const { parseDims, buildDims, shortDims, toCm, dimsCm, buildExport, validateExport, Mock } = T;
+    const O = { key: Mock.OWNER }, F = { key: Mock.FRIEND };
+    const call = (who, action, extra = {}) => Mock.handle({ action, ...who, ...extra });
+    const strip = p => ({ w: p.w, d: p.d, h: p.h, unit: p.unit });
+
+    group('Dimensions');
+    await test('buildDims → parseDims round-trip (full)', () => { const s = buildDims('225', '85', '79', 'cm'); eq(s, 'W 225 × D 85 × H 79 cm'); eq(strip(parseDims(s)), { w: '225', d: '85', h: '79', unit: 'cm' }); });
+    await test('partial: height only', () => { eq(buildDims('', '', '110', 'cm'), 'H 110 cm'); const p = parseDims('H 110 cm'); eq(strip(p), { w: '', d: '', h: '110', unit: 'cm' }); ok(p.parsed); });
+    await test('empty stays empty', () => { eq(buildDims('', '', '', 'cm'), ''); ok(parseDims('').parsed); });
+    await test('decimals and units mm / m / in', () => {
+      for (const [w, d, h, u] of [['1.5', '0.8', '2', 'm'], ['450', '300', '1200', 'mm'], ['33.5', '12', '20', 'in']]) eq(strip(parseDims(buildDims(w, d, h, u))), { w, d, h, unit: u });
+    });
+    await test('decimal comma is read', () => eq(strip(parseDims('W 1,5 × D 0,8 × H 2 m')), { w: '1,5', d: '0,8', h: '2', unit: 'm' }));
+    await test('free-form text is not parsed', () => ok(!parseDims('about 60x3x60').parsed));
+    await test('shortDims', () => { eq(shortDims('W 225 × D 85 × H 79 cm'), '225×85×79 cm'); eq(shortDims('H 110 cm'), '110 cm'); });
+    await test('toCm conversions and rounding to 0.1', () => {
+      eq([toCm('225', 'cm'), toCm('2250', 'mm'), toCm('2.25', 'm'), toCm('10', 'in'), toCm('1,5', 'm'), toCm('0.333', 'm'), toCm('33.33', 'in')], [225, 225, 225, 25.4, 150, 33.3, 84.7]);
+      eq([toCm('', 'cm'), toCm('abc', 'cm'), toCm('5', 'ft'), toCm('0', 'cm'), toCm('-3', 'cm')], [null, null, null, null, null]);
+    });
+    await test('dimsCm: full → cm object; partial / free-form → null', () => {
+      eq(dimsCm('W 1.5 × D 0.8 × H 2 m'), { w: 150, d: 80, h: 200, unit: 'cm' });
+      eq([dimsCm('H 110 cm'), dimsCm('W 60 × H 60 cm'), dimsCm('about 60x3x60'), dimsCm('')], [null, null, null, null]);
+    });
+
+    group('Export (contract shared with Storage Studio)');
+    Mock.reset();
+    const exp = buildExport(await call(O, 'export'));
+    await test('export passes the contract check', () => eq(validateExport(exp), []));
+    await test('envelope fields', () => { eq([exp.format, exp.version], ['move-inventory', 1]); ok(!isNaN(Date.parse(exp.exportedAt)), 'exportedAt'); ok(typeof exp.source === 'string' && exp.source, 'source'); });
+    await test('every item, every status, including kept ones', () => { const st = new Set(exp.items.map(i => i.status)); ['available', 'claimed', 'gone', 'keep'].forEach(x => ok(st.has(x), 'missing status ' + x)); });
+    await test('no names, notes, prices, photos or tokens', () => {
+      const j = JSON.stringify(exp);
+      ['claimedBy', 'claimMessage', 'claimToken', 'waitlist', 'price', 'photos', 'pickupSlot', 'Anna', 'Saturday', 'data:image'].forEach(w => ok(!j.includes(w), 'found ' + w));
+    });
+    await test('kept → disposition store, others give', () => exp.items.forEach(i => eq(i.disposition, i.status === 'keep' ? 'store' : 'give')));
+    await test('quantity and measured carried over', () => { const ch = exp.items.find(i => i.id === 'd9'), so = exp.items.find(i => i.id === 'd1'); eq([ch.quantity, so.measured, ch.measured], [4, true, false]); });
+    await test('dimensions null when incomplete, raw text kept', () => { const pl = exp.items.find(i => i.id === 'd4'); eq([pl.dimensions, pl.dimensionsRaw], [null, 'H 110 cm']); });
+    await test('extra server fields are dropped', () => {
+      const x = buildExport({ items: [{ id: 'z', title: 't', status: 'claimed', claimedBy: 'X', photos: ['p'], quantity: '2', dimensionsRaw: 'W 1 × D 2 × H 3 m', updated: 5 }] });
+      eq(validateExport(x), []); eq(Object.keys(x.items[0]).sort(), ['category', 'dimensions', 'dimensionsRaw', 'disposition', 'id', 'measured', 'quantity', 'room', 'status', 'title', 'updated']);
+      eq(x.items[0].dimensions, { w: 100, d: 200, h: 300, unit: 'cm' });
+    });
+    await test('contract check rejects bad data', () => {
+      const good = buildExport({ items: [{ id: 'a', title: 't', dimensionsRaw: 'W 1 × D 1 × H 1 cm' }] });
+      const bad = JSON.parse(JSON.stringify(good)); bad.items[0].quantity = 0; bad.items[0].dimensions.unit = 'mm'; bad.items[0].claimedBy = 'X';
+      eq(validateExport(bad).length, 3);
+    });
+
+    group('Demo backend — keep, quantity, permissions');
+    Mock.reset();
+    const ids = r => r.items.map(i => i.id);
+    await test('friends never see kept items', async () => { ok(!ids(await call(F, 'list')).includes('d10')); ok(ids(await call(O, 'list')).includes('d10')); });
+    await test('friends cannot claim, queue or export a kept item', async () => {
+      await rejects(call(F, 'claim', { id: 'd10', name: 'X' }), 'NOT_FOUND');
+      await rejects(call(F, 'queue', { id: 'd10', name: 'X' }), 'NOT_FOUND');
+      await rejects(call(F, 'export'), 'FORBIDDEN');
+    });
+    await test('keep → hidden; offer again → visible', async () => {
+      eq((await call(O, 'setStatus', { id: 'd3', status: 'keep' })).item.status, 'keep');
+      ok(!ids(await call(F, 'list')).includes('d3'));
+      eq((await call(O, 'setStatus', { id: 'd3', status: 'available' })).item.status, 'available');
+      ok(ids(await call(F, 'list')).includes('d3'));
+    });
+    await test('a claimed item cannot be kept', async () => {
+      await rejects(call(O, 'setStatus', { id: 'd2', status: 'keep' }), 'INVALID');
+      const it = (await call(O, 'list')).items.find(i => i.id === 'd2');
+      await rejects(call(O, 'saveItem', { item: { ...it, keep: true } }), 'INVALID');
+    });
+    await test('quantity saved, clamped, and kept when an older page leaves it out', async () => {
+      const it = (await call(O, 'list')).items.find(i => i.id === 'd3');
+      eq((await call(O, 'saveItem', { item: { ...it, quantity: 6 } })).item.quantity, 6);
+      eq((await call(O, 'saveItem', { item: { ...it, quantity: 0 } })).item.quantity, 1);
+      eq((await call(O, 'saveItem', { item: { ...it, quantity: 5000 } })).item.quantity, 999);
+      const { quantity, ...old } = it;
+      eq((await call(O, 'saveItem', { item: old })).item.quantity, 999);
+    });
+    await test('measured is owner-only', async () => {
+      const f = (await call(F, 'list')).items.find(i => i.id === 'd1'), o = (await call(O, 'list')).items.find(i => i.id === 'd1');
+      eq(['measured' in f, o.measured], [false, true]);
+    });
+    await test('new item via the editor flow can start as kept', async () => {
+      const r = await call(O, 'saveItem', { item: { title: 'Desk', quantity: 1, measured: false, keep: true } });
+      eq(r.item.status, 'keep'); ok(!ids(await call(F, 'list')).includes(r.item.id));
+    });
+
+    group('Existing flows unchanged');
+    Mock.reset();
+    await test('claim → second claim refused → waitlist → release passes it on', async () => {
+      const a = await call(F, 'claim', { id: 'd3', name: 'Ann' });
+      await rejects(call(F, 'claim', { id: 'd3', name: 'Bob' }), 'TAKEN');
+      const q = await call(F, 'queue', { id: 'd3', name: 'Bob' }); eq(q.position, 1);
+      const u = await call(F, 'unclaim', { id: 'd3', token: a.token }); eq([u.item.status, u.item.claimedBy], ['claimed', 'Bob']);
+    });
+    await test('handed over → gone; claim notes hidden from friends', async () => {
+      eq((await call(O, 'setStatus', { id: 'd3', status: 'gone' })).item.status, 'gone');
+      const f = (await call(F, 'list')).items.find(i => i.id === 'd2'); ok(!('claimMessage' in f) && !('claimToken' in f));
+    });
+    await test('friends cannot edit', async () => { await rejects(call(F, 'saveItem', { item: { title: 'x' } }), 'FORBIDDEN'); });
+    Mock.reset();
+  }
+
+  const frame = document.getElementById('app');
+  const start = Date.now();
+  (function wait() {
+    let T = null;
+    try { T = frame.contentWindow && frame.contentWindow.__MOVE_TEST__; } catch (e) {
+      sum.className = 'bad'; sum.textContent = 'Can’t reach the page under test. Open this from the site address, not as a local file.'; return;
+    }
+    if (!T) { if (Date.now() - start > 15000) { sum.className = 'bad'; sum.textContent = 'The page under test didn’t load.'; return; } return setTimeout(wait, 100); }
+    run(T).then(() => {
+      sum.className = fail ? 'bad' : 'ok';
+      sum.textContent = fail ? `${fail} failed, ${pass} passed` : `All ${pass} checks passed`;
+      document.title = (fail ? '✗ ' : '✓ ') + 'MOVE self-test';
+    }, e => { sum.className = 'bad'; sum.textContent = 'Test run crashed: ' + e.message; });
+  })();
+})();
+</script>
+</body>
+</html>

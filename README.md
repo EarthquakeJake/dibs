@@ -1,106 +1,67 @@
-# Dibs — set-up guide
+# MOVE
 
-A private "call dibs" page for friends and family. You list things from your home with photos; people open your invite link and claim what they want. Claimed items are locked for everyone else instantly, and you get an email for every claim.
-
-**How it fits together**
+A private page for friends and family to claim things from a household before a move. The owner lists items with photos; people open the invite link and claim what they want. A claimed item is locked for everyone else straight away, others can join a waitlist, and the owner gets an email for every claim.
 
 | Piece | What it does | Cost |
 |---|---|---|
-| `index.html` on **GitHub Pages** | The website people see | Free |
-| **Google Sheet + Apps Script** (`Code.gs`) | Stores items and claims, locks claims so two people can't grab the same thing, sends you emails | Free |
-| **Google Drive** folder | Holds the photos | Free (uses your Drive space) |
+| `index.html` on **GitHub Pages** | The page people see | Free |
+| **Google Sheet + Apps Script** (`Code.gs`) | Stores items, claims, waitlists and pickup times; locks claims so two people can't get the same thing; sends the emails | Free |
+| **Google Drive** folder | Holds the photos | Free |
+| `tests.html` | Self-test for the page — run it before every upload | — |
 
-GitHub Pages can only serve static files, so it can't remember claims on its own — that's what the Google Sheet is for. Allow about 20 minutes for the set-up below.
-
----
-
-## Step 1 — Create the Google Sheet and paste the backend
-
-1. Go to [sheets.new](https://sheets.new) and name the sheet **Dibs**.
-2. In the sheet: **Extensions → Apps Script**. A code editor opens.
-3. Delete everything in `Code.gs` and paste in the full contents of the `Code.gs` file from this folder.
-4. At the top, in `SETTINGS`, change the two codes:
-   - `FRIEND_CODE` — what friends use (it goes inside the invite link, so it can be simple, e.g. `attic-2026`).
-   - `OWNER_CODE` — **your** private code for adding and editing items. Make it long and different.
-5. Click 💾 **Save**.
-
-## Step 2 — Run the one-off set-up
-
-1. In the toolbar's function dropdown pick **`setup`**, then click **▶ Run**.
-2. Google asks for permission. Click **Review permissions** → choose your account → you'll see *"Google hasn't verified this app"*. That's normal for your own scripts: click **Advanced → Go to Dibs (unsafe) → Allow**.
-   It needs: the sheet (to store items), Drive (to save photos), and Gmail sending (to email you about claims).
-3. The **Execution log** should say **✅ Ready**. Your sheet now has an **Items** tab.
-4. Optional: run **`sendTestEmail`** to check notifications arrive (look in spam the first time).
-
-## Step 3 — Publish the backend as a web app
-
-1. Top right: **Deploy → New deployment**.
-2. Click the ⚙️ next to "Select type" → **Web app**.
-3. Set:
-   - **Execute as:** *Me*
-   - **Who has access:** *Anyone*  ← required, otherwise the page can't reach it. Your codes are what keep it private.
-4. **Deploy** → copy the **Web app URL** (it ends in `/exec`).
-
-## Step 4 — Connect the page
-
-Open `index.html` in a text editor (Notepad is fine). Near the top, fill in:
-
-```js
-const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/……/exec',   // ← the URL from step 3
-  SITE_NAME: 'Dibs',
-  TAGLINE: 'Everything here needs a new home. …',
-  OWNER_NAME: '',          // optional first name shown in messages
-  CURRENCY: '€',
-  REFRESH_SECONDS: 30,
-};
-```
-
-Save. (While `API_URL` is empty, the page runs in **demo mode** with sample items — handy for a look before you set anything up.)
-
-## Step 5 — Put it on GitHub Pages
-
-1. On GitHub: **New repository** → name it e.g. `dibs` → **Public** (free GitHub Pages needs a public repo — the *code* is public, your items and claims are not) → **Create**.
-2. **Add file → Upload files** → drop in `index.html` → **Commit changes**.
-3. **Settings → Pages** → *Source:* **Deploy from a branch** → *Branch:* `main`, folder `/ (root)` → **Save**.
-4. After a minute or two the address appears at the top of that page, e.g. `https://yourname.github.io/dibs/`.
-
-## Step 6 — Tell the backend your site address (for the email links)
-
-1. Back in Apps Script, set `SITE_URL` in `SETTINGS` to your GitHub Pages address. Save.
-2. **Deploy → Manage deployments** → ✏️ (edit) → *Version:* **New version** → **Deploy**.
-   The URL stays the same. **Do this every time you change `Code.gs`** — otherwise the old version keeps running.
-
-## Step 7 — Start listing
-
-1. On your phone, open `https://yourname.github.io/dibs/#k=YOUR-OWNER-CODE` once. It remembers you (and removes the code from the address bar).
-2. Tap **＋ Add item** → take photos straight from the camera → fill in title, dimensions, price, etc. → **Add item**.
-3. Tap **Copy invite link** and paste it into your family/friends group chat. The link contains the friend code, so people go straight in without typing anything.
+GitHub Pages only serves files, so the Sheet does the remembering. Nothing personal belongs in this repo: the access codes live only in Apps Script.
 
 ---
+
+## Setting it up
+
+1. **Sheet.** Create a Google Sheet, then **Extensions → Apps Script**.
+2. **Backend.** Replace everything in the editor with `Code.gs` from this repo. In `SETTINGS`:
+   - `FRIEND_CODE` — for friends (it goes inside the invite link). Make it long, e.g. three random words and a number.
+   - `OWNER_CODE` — yours, for adding and editing. Long and different.
+   - `SITE_URL` — your GitHub Pages address (used in the emails).
+3. **Permissions.** Pick **`setup`** in the function list and **Run**. Allow access (on "Google hasn't verified this app": **Advanced → Go to … → Allow**). It creates the `Items`, `Slots` and `Log` tabs and the photo folder.
+4. **Publish.** **Deploy → New deployment → Web app**, *Execute as: Me*, *Who has access: Anyone*. Copy the web-app URL (ends in `/exec`).
+5. **Page.** In `index.html`, set `CONFIG.API_URL` to that URL. With `API_URL` empty the page runs on sample data (demo mode).
+6. **GitHub Pages.** Upload `index.html`, the icons, `manifest.webmanifest`, `tests.html` and `.nojekyll`; then **Settings → Pages → Deploy from a branch → main / (root)**.
+
+**Changed `Code.gs`?** **Deploy → Manage deployments → ✏️ → Version: New version → Deploy.** The URL stays the same. Without a new version the old code keeps running.
 
 ## Day to day
 
-- **Someone claims something** → you get an email with their name and note. The item shows *"Dibs: Anna"* for everyone else and can't be claimed again.
-- **Pickups** (owner button) → everything claimed, grouped by person, with their notes. *Copy list* gives you a text summary to plan collections. Tap **Handed over** when it's gone.
-- **Someone changes their mind** → they tap *Changed my mind* on the item (works on the device they claimed from), or you tap **Release claim**.
-- **Everything is also in the sheet.** You can fix typos or statuses directly in the *Items* tab (`status` is `available`, `claimed` or `gone`). The *Log* tab records every claim and release.
+- **Add items** from your phone (owner link: `…/dibs/#k=YOUR-OWNER-CODE`, opened once). Up to 10 photos each, a quantity for sets, and W/D/H dimensions. Tick **Dimensions measured** once you've checked them with a tape measure.
+- **Keep items** you're not giving away: tick **Keep — don't offer to friends** in the editor, or use **Keep it** on the item. Friends never receive kept items; they show under **Keeping** for you. **Offer to friends** puts one back on the list.
+- **Invite** with **Copy invite link**.
+- **Claims and waitlist.** First come, first served. If the claimer changes their mind, it passes to the next person in line automatically.
+- **Pickups** lists everything claimed, by pickup time and person. Add the times you're around there; **Copy list** gives a text version with dimensions, so people know what vehicle they need.
+- **Everything is also in the Sheet** (`Items` tab). `status` is `available`, `claimed`, `gone` or `keep`. The `Log` tab records every change.
 
-## Privacy, in plain terms
+### Export for storage planning
 
-- Nobody can see items or claim anything without a code. Wrong codes are rejected by the backend, not just hidden by the page.
-- The page is set to *noindex*, so search engines won't list it.
-- Photos sit in your Drive folder **"Dibs photos"**, shared *view-only to anyone with the link* — that's what lets the page show them. Their links are long random IDs, only visible to people with a code. Don't photograph anything you wouldn't want seen.
-- Friends see who claimed what (first name, as they typed it). Notes left with a claim are visible **only to you**.
-- **Changing a code** (e.g. a link got shared too widely): edit `SETTINGS`, then *Manage deployments → New version*. Old links stop working; send the new invite link.
+**Export** (owner only) downloads `move-inventory-YYYY-MM-DD.json` with every item, including kept and gone ones. Each item has its id, title, category, room, status, disposition (`store` for kept items, otherwise `give`), quantity, whether it was measured, and dimensions converted to centimetres (`null` if width, depth or height is missing; the original text is in `dimensionsRaw`).
+
+The export deliberately leaves out names, claim notes, prices, photos and tokens. The format (`"format": "move-inventory", "version": 1`) is a contract with the storage planner: change it only by agreement, and bump `version` for additions.
+
+## Testing
+
+Open `tests.html` from the site address (for example `https://yourname.github.io/dibs/tests.html`). It loads the page on sample data and checks dimension parsing, the export format, keep/quantity rules, permissions and the claim/waitlist flow. It never touches the live list. Everything should be green before you upload a new `index.html`.
+
+Add `?demo` to the page address to click around on sample data without touching the live list.
+
+## Privacy and security
+
+- **The codes are the secret, not the URL.** The Apps Script URL has to be in the public page for it to work; without a valid code it returns nothing. Wrong codes are refused by the backend. Use long codes; if one leaks, change it in `SETTINGS`, publish a new version, and send a new invite link.
+- **Friends see** items (not kept ones), and the names people typed when claiming or joining a waitlist. **Only the owner sees** claim notes, waitlist notes and the measured flag.
+- **Photos** are in your Drive folder, shared "anyone with the link can view" so the page can show them. The links are long and random, but don't photograph anything private.
+- **`GLYPH` and `DESTINATION`** in `CONFIG` are cosmetic and optional; they're shown on the page, so leave them blank if you'd rather not say where you're moving.
+- The page asks search engines not to index it (`noindex`).
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| "The server sent an unexpected reply" | The deployment's *Who has access* isn't **Anyone**, or `API_URL` is wrong / doesn't end in `/exec`. |
-| My `Code.gs` changes don't do anything | Create a **new version** under *Deploy → Manage deployments*. |
-| Photos show a camera icon instead of the picture | Open the *Dibs photos* folder in Drive and check sharing is "Anyone with the link". Work/school Google accounts sometimes block this — use a personal Gmail account. |
-| No emails | Run `sendTestEmail` in Apps Script; check spam; check `NOTIFY_EMAIL`. Personal accounts can send 100 emails a day. |
-| "That access code is not right" | Codes are case-sensitive. Check `SETTINGS` and that you deployed a new version after changing them. |
-| iPhone photo won't upload on a desktop browser | Some desktop browsers can't read HEIC. Upload from your phone instead, or export as JPEG. |
+| "The server sent an unexpected reply" | The deployment's *Who has access* isn't **Anyone**, or `API_URL` is wrong. |
+| A change to `Code.gs` does nothing | Publish a **new version** (see above). |
+| Waitlist, pickup times, keep or export don't work | The page is newer than the backend: paste the current `Code.gs`, run `setup`, publish a new version. |
+| Photos show a camera icon | Check the photo folder is shared "Anyone with the link". Work/school Google accounts can block this. |
+| No emails | Run `sendTestEmail` in Apps Script; check spam. Personal Gmail sends about 100 a day. |

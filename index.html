@@ -24,8 +24,8 @@ const CONFIG = {
   TAGLINE: 'Everything here needs a new home. Tap an item to claim it — first come, first served.',
   OWNER_NAME: '',         // optional first name, e.g. "Sam has been notified". Blank = neutral wording.
   CURRENCY: '€',
-  GLYPH: '搬',              // shown in the neon logo (搬 = move). Blank = first letter of SITE_NAME.
-  DESTINATION: '香港 HKG',   // shown next to the logo. Blank = hide.
+  GLYPH: '搬',              // cosmetic: shown in the neon logo (搬 = move). Blank = first letter of SITE_NAME.
+  DESTINATION: '香港 HKG',   // cosmetic, optional: shown next to the logo. Blank = hide.
   REFRESH_SECONDS: 30,    // how often the page checks for new claims
 };
 /* =============================================================== */
@@ -152,6 +152,17 @@ body:has(#ownerBar:not([hidden])) .brand .pill-owner{display:inline-flex}
 .t-claimed{color:var(--claimed)}
 .t-mine{color:var(--accent)}
 .t-gone{color:var(--gone)}
+.t-keep{color:#7FB2FF}
+.card.is-keep .ph img{filter:saturate(.6) brightness(.8)}
+.ctitle .qty{color:var(--muted);font-size:.86em;font-weight:500;white-space:nowrap}
+.claimbox.keep{background:rgba(127,178,255,.07);border-color:rgba(127,178,255,.25)}
+.claimbox.keep h3{color:#7FB2FF}
+.checks{display:flex;flex-direction:column;gap:10px;justify-content:center}
+.check{display:flex;align-items:flex-start;gap:9px;font-size:14px;cursor:pointer;line-height:1.35}
+.check input{width:17px;height:17px;margin:1px 0 0;flex:none;accent-color:var(--primary)}
+.check small{display:block;color:var(--muted);font-size:12.5px}
+.check.off{opacity:.55;cursor:default}
+.hint.warn{color:var(--claimed)}
 .t-new::before{background:var(--neon);box-shadow:0 0 6px var(--neon)}
 .pcount{position:absolute;right:10px;bottom:10px;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:6px;font:500 11.5px 'Geist Mono',ui-monospace,monospace;background:rgba(11,15,23,.7);color:#fff}
 .pcount svg{width:13px;height:13px}
@@ -224,6 +235,22 @@ dialog[open]{animation:pop .18s ease-out}
 .gmain{position:relative;aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden;touch-action:pan-y;user-select:none}
 .gmain img{width:100%;height:100%;object-fit:contain;display:block}
 .gmain .noimg{color:#5B6578}
+.gmain img{cursor:zoom-in}
+/* full-screen photo (lightbox) */
+dialog.lb,dialog.lb.narrow{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;padding:0;border-radius:0;background:#000;overflow:hidden;box-shadow:none}
+dialog.lb::backdrop{background:#000}
+dialog.lb[open]{animation:fadein .15s ease-out}
+@keyframes fadein{from{opacity:0}}
+.lbstage{position:absolute;inset:0;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
+.lbstage img{position:absolute;inset:0;margin:auto;max-width:100%;max-height:100%;width:auto;height:auto;transform-origin:center center;will-change:transform;-webkit-user-drag:none;pointer-events:none}
+.lbstage.drag img{transition:none}
+.lbstage.ease img{transition:transform .18s ease-out}
+dialog.lb .x{position:absolute;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:2;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:40px;height:40px}
+dialog.lb .gnav{z-index:2}
+dialog.lb.single .gnav{display:none}
+dialog.lb .gcount{bottom:calc(14px + env(safe-area-inset-bottom));z-index:2}
+dialog.lb .lbhint{position:absolute;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2;font-size:11.5px;color:rgba(255,255,255,.6);pointer-events:none}
+@media (max-width:760px){dialog.lb .gnav{display:none}}
 .gnav{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:none;background:rgba(236,239,244,.92);color:#0B0F17;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .gnav.prev{left:12px}.gnav.next{right:12px}
 .gcount{position:absolute;left:12px;bottom:12px;height:22px;display:inline-flex;align-items:center;padding:0 8px;border-radius:6px;font:500 11.5px 'Geist Mono',ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.55)}
@@ -262,8 +289,8 @@ dialog[open]{animation:pop .18s ease-out}
 
 /* editor */
 .eform{padding:20px 20px 0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
-.eform .c6{grid-column:span 6}.eform .c3{grid-column:span 3}.eform .c2{grid-column:span 2}
-@media (max-width:560px){.eform{padding:16px 16px 0}.eform .c3{grid-column:span 6}.eform .c2{grid-column:span 3}}
+.eform .c6{grid-column:span 6}.eform .c4{grid-column:span 4}.eform .c3{grid-column:span 3}.eform .c2{grid-column:span 2}
+@media (max-width:560px){.eform{padding:16px 16px 0}.eform .c3,.eform .c4{grid-column:span 6}.eform .c2{grid-column:span 3}}
 .dimrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 84px;gap:8px}
 .dimrow label{position:relative}
 .dimrow label b{position:absolute;left:11px;top:50%;transform:translateY(-50%);font:500 12px 'Geist Mono',ui-monospace,monospace;color:var(--muted);pointer-events:none}
@@ -372,6 +399,7 @@ dialog[open]{animation:pop .18s ease-out}
       <div class="brand"><span class="logo" data-glyph aria-hidden="true">搬</span><h1 class="name" data-sitename>MOVE</h1><span class="route" data-dest>→ 香港 HKG</span><span class="pill-owner">Owner</span></div>
       <div class="ownerbar" id="ownerBar" hidden>
         <button class="btn" data-act="pickups"></button>
+        <button class="btn" data-act="export" title="Download the inventory for storage planning"></button>
         <button class="btn" data-act="invite"></button>
         <button class="btn primary" data-act="add"></button>
       </div>
@@ -411,6 +439,7 @@ dialog[open]{animation:pop .18s ease-out}
 </div>
 
 <dialog id="detailDlg" aria-label="Item details"><div id="detailBody"></div></dialog>
+<dialog id="lbDlg" class="lb" aria-label="Photo, full screen"><div class="lbstage" id="lbStage"><img id="lbImg" alt="" decoding="async"></div><button type="button" class="x" data-lb="close" aria-label="Close photo">✕</button><button type="button" class="gnav prev" data-lb="-1" aria-label="Previous photo">‹</button><button type="button" class="gnav next" data-lb="1" aria-label="Next photo">›</button><span class="gcount" id="lbCount"></span><span class="lbhint">Pinch or double-tap to zoom</span></dialog>
 <dialog id="editorDlg" class="narrow" aria-label="Edit item"><form id="editorForm" novalidate></form></dialog>
 <dialog id="pickupsDlg" class="narrow" aria-label="Pickups"><div id="pickupsBody"></div></dialog>
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
@@ -452,6 +481,8 @@ const ICONS = {
   users: '<circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 12 0v1"/><path d="M16 4a4 4 0 0 1 0 8M22 21v-1a6 6 0 0 0-4-5.6"/>',
   star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
   refresh: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+  download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  keep: '<path d="M6 3h12v18l-6-4-6 4z"/>',
 };
 const icon = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
@@ -498,15 +529,17 @@ const Mock = (() => {
   }
   function seed() {
     const now = Date.now(), h = 36e5, d = 24 * h;
-    const base = { description: '', category: '', condition: '', dimensions: '', price: '', room: '', pickup: '', photos: [], status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', waitlist: [], pickupSlot: '' };
+    const base = { description: '', category: '', condition: '', dimensions: '', price: '', room: '', pickup: '', photos: [], status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', waitlist: [], pickupSlot: '', quantity: 1, measured: false };
     return [
-      { ...base, id: 'd1', title: 'Three-seater sofa, olive velvet', description: 'Comfortable and sturdy. A bit worn on the left arm. The cushion covers come off and are washable.\n\nYou’ll need two people and a van — it fits through a standard door.', category: 'Furniture', condition: 'Good', dimensions: 'W 210 × D 92 × H 84 cm', room: 'Living room', pickup: 'From 1 December', photos: [art('sofa', '#3E5B4A', '#C9D8B6'), art('sofa', '#E9E2D3', '#56715F'), art('sofa', '#2C4438', '#9DBB8C')], created: now - 2 * h, updated: now - 2 * h },
+      { ...base, id: 'd1', title: 'Three-seater sofa, olive velvet', description: 'Comfortable and sturdy. A bit worn on the left arm. The cushion covers come off and are washable.\n\nYou’ll need two people and a van — it fits through a standard door.', category: 'Furniture', condition: 'Good', dimensions: 'W 210 × D 92 × H 84 cm', measured: true, room: 'Living room', pickup: 'From 1 December', photos: [art('sofa', '#3E5B4A', '#C9D8B6'), art('sofa', '#E9E2D3', '#56715F'), art('sofa', '#2C4438', '#9DBB8C')], created: now - 2 * h, updated: now - 2 * h },
       { ...base, id: 'd2', title: 'Brass floor lamp', description: 'Warm light, dimmable. Bulb included.', category: 'Lighting', condition: 'Like new', dimensions: 'W 35 × D 35 × H 160 cm', price: '15', room: 'Bedroom', photos: [art('lamp', '#2B2F3A', '#E2B65B')], status: 'claimed', claimedBy: 'Anna', claimedAt: now - 5 * h, claimMessage: 'Could I pick it up Saturday morning?', claimToken: uid(), pickupSlot: 's1', waitlist: [{ name: 'Sam', message: 'Happy to take it if Anna changes her mind.', slot: '', token: uid(), at: now - 2 * h }], created: now - 3 * d, updated: now - 5 * h },
       { ...base, id: 'd3', title: 'Oak dining table', description: 'Seats six. Legs unscrew for transport.', category: 'Furniture', condition: 'Good', dimensions: 'W 160 × D 90 × H 75 cm', price: '60', room: 'Kitchen', photos: [art('table', '#D9C7A7', '#7A5530'), art('table', '#F1E8D8', '#8E6A43')], created: now - 3 * d, updated: now - 3 * d },
       { ...base, id: 'd4', title: 'Monstera in terracotta pot', description: 'Very happy plant. Needs a bright spot without direct sun.', category: 'Plants', condition: 'Good', dimensions: 'H 110 cm', room: 'Living room', pickup: 'Any time', photos: [art('plant', '#EFE6D6', '#2F7D4F')], created: now - 20 * h, updated: now - 20 * h },
       { ...base, id: 'd5', title: 'City bike, 7 gears', description: 'New tyres this spring. Frame size 56. Lock and key included.', category: 'Outdoor', condition: 'Good', price: '45', room: 'Shed', photos: [art('bike', '#19324A', '#7FD1C7')], status: 'claimed', claimedBy: 'Tom', claimedAt: now - 26 * h, claimMessage: '', claimToken: uid(), created: now - 4 * d, updated: now - 26 * h },
       { ...base, id: 'd6', title: 'Box of paperbacks (about 40)', description: 'Mostly crime and sci-fi.', category: 'Books', condition: 'Well-loved', room: 'Study', photos: [art('books', '#F3E3C3', '#A4483A')], status: 'gone', claimedBy: 'Mum', claimedAt: now - 6 * d, created: now - 8 * d, updated: now - 2 * d },
       { ...base, id: 'd7', title: 'Electric kettle, 1.7 L', category: 'Kitchen', condition: 'Fair', price: '5', room: 'Kitchen', photos: [art('kettle', '#DCE7EE', '#33505F')], created: now - 30 * h, updated: now - 30 * h },
+      { ...base, id: 'd9', title: 'Bentwood dining chairs', description: 'A set — they go together.', category: 'Furniture', condition: 'Good', dimensions: 'W 44 × D 50 × H 82 cm', quantity: 4, room: 'Kitchen', photos: [art('table', '#E6DCCB', '#5B3A1E')], created: now - 9 * h, updated: now - 9 * h },
+      { ...base, id: 'd10', title: 'Vinyl records (crate)', description: 'Not for giving away.', category: 'Music', condition: 'Good', dimensions: 'W 35 × D 35 × H 40 cm', measured: true, room: 'Living room', status: 'keep', created: now - 10 * h, updated: now - 10 * h },
       { ...base, id: 'd8', title: 'Round wall mirror', description: 'Photo coming soon.', category: 'Decor', condition: 'Like new', dimensions: 'W 60 × D 3 × H 60 cm', room: 'Hallway', created: now - 6 * h, updated: now - 6 * h },
     ];
   }
@@ -519,12 +552,12 @@ const Mock = (() => {
       { id: 's3', start: at(sat + 4, 18), end: at(sat + 4, 20) },
     ];
   }
-  const load = () => LS.get('demo.items2', null) || seed();
-  const save = items => { if (!LS.set('demo.items2', items)) throw apiErr('Demo storage is full — remove some photos or reset the demo.', 'QUOTA'); };
+  const load = () => LS.get('demo.items3', null) || seed();
+  const save = items => { if (!LS.set('demo.items3', items)) throw apiErr('Demo storage is full — remove some photos or reset the demo.', 'QUOTA'); };
   const loadSlots = () => LS.get('demo.slots', null) || seedSlots();
   const view = (it, role) => {
     const v = { ...it, waitlist: (it.waitlist || []).map(e => role === 'owner' ? { name: e.name, at: e.at, message: e.message, slot: e.slot } : { name: e.name, at: e.at }) };
-    delete v.claimToken; if (role !== 'owner') delete v.claimMessage; return v;
+    delete v.claimToken; if (role !== 'owner') { delete v.claimMessage; delete v.measured; } return v;
   };
   const cleanSlot = (s, slots) => s === 'other' ? 'other' : slots.some(x => x.id === s) ? s : '';
   const handOn = (it, now) => {
@@ -538,7 +571,8 @@ const Mock = (() => {
     const role = req.key === OWNERC ? 'owner' : req.key === FRIEND ? 'friend' : null;
     if (!role) throw apiErr('That access code is not right.', 'AUTH');
     const items = load(), slots = loadSlots();
-    const find = id => items.find(i => i.id === id);
+    const hidden = it => role !== 'owner' && it.status === 'keep';
+    const find = id => items.find(i => i.id === id && !hidden(i));
     const now = Date.now();
     const person = () => { const n = String(req.name || '').trim().replace(/\s+/g, ' ').slice(0, 60); if (!n) throw apiErr('Please enter your name.', 'INVALID'); return n; };
     switch (req.action) {
@@ -548,7 +582,7 @@ const Mock = (() => {
           if (i.claimToken && toks.has(i.claimToken)) { you[i.id] = 'claim'; return; }
           const p = (i.waitlist || []).findIndex(e => toks.has(e.token)); if (p >= 0) you[i.id] = p + 1;
         });
-        return { ok: true, role, items: items.map(i => view(i, role)), slots, you, friendCode: role === 'owner' ? FRIEND : undefined, now };
+        return { ok: true, role, items: items.filter(i => !hidden(i)).map(i => view(i, role)), slots, you, friendCode: role === 'owner' ? FRIEND : undefined, now };
       }
       case 'claim': {
         const name = person();
@@ -598,7 +632,14 @@ const Mock = (() => {
         if (!String(src.title || '').trim()) throw apiErr('A title is needed.', 'INVALID');
         let it = src.id ? find(src.id) : null;
         if (src.id && !it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
-        if (!it) { it = { id: uid(), status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', waitlist: [], pickupSlot: '', created: now }; items.push(it); }
+        if (!it) { it = { id: uid(), status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', waitlist: [], pickupSlot: '', quantity: 1, measured: false, created: now }; items.push(it); }
+        if (src.keep === true && it.status !== 'keep') {
+          if (it.status === 'claimed') throw apiErr('Release the claim before keeping this item.', 'INVALID');
+          if (it.status === 'gone') throw apiErr('This item has already gone.', 'INVALID');
+          it.status = 'keep'; it.waitlist = [];
+        } else if (src.keep === false && it.status === 'keep') it.status = 'available';
+        if ('quantity' in src) it.quantity = Math.min(999, Math.max(1, Math.floor(+src.quantity) || 1));
+        if ('measured' in src) it.measured = !!src.measured;
         ['title', 'description', 'category', 'condition', 'dimensions', 'price', 'room', 'pickup'].forEach(k => it[k] = String(src[k] || '').trim());
         it.photos = (src.photos || []).slice(0, 10); it.updated = now;
         save(items); return { ok: true, item: view(it, 'owner') };
@@ -606,12 +647,21 @@ const Mock = (() => {
       case 'deleteItem': { const i = items.findIndex(x => x.id === req.id); if (i >= 0) items.splice(i, 1); save(items); return { ok: true }; }
       case 'setStatus': {
         const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
-        if (req.status === 'available') {
+        if (!['available', 'gone', 'keep'].includes(req.status)) throw apiErr('Status must be "available", "gone" or "keep".', 'INVALID');
+        if (req.status === 'keep') {
+          if (it.status !== 'available' && it.status !== 'keep') throw apiErr('Only an unclaimed item can be kept.', 'INVALID');
+          it.status = 'keep'; it.waitlist = [];
+        } else if (req.status === 'available') {
           if (it.status === 'claimed') handOn(it, now);
           else Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', pickupSlot: '', waitlist: [] });
         } else { it.status = 'gone'; it.waitlist = []; }
         it.updated = now; save(items); return { ok: true, item: view(it, 'owner') };
       }
+      case 'export': return {
+        ok: true, format: 'move-inventory', version: 1, exportedAt: new Date(now).toISOString(), source: '',
+        items: items.map(i => ({ id: i.id, title: i.title, category: i.category, room: i.room, status: i.status, disposition: i.status === 'keep' ? 'store' : 'give',
+          quantity: i.quantity || 1, measured: !!i.measured, dimensionsRaw: i.dimensions || '', updated: i.updated || 0 })),
+      };
       case 'saveSlots': {
         const out = (req.slots || []).map(s => ({ id: /^[\w-]{2,40}$/.test(s.id || '') ? s.id : uid(), start: +s.start, end: +s.end }))
           .filter(s => s.start && s.end > s.start).sort((a, b) => a.start - b.start).slice(0, 60);
@@ -620,7 +670,7 @@ const Mock = (() => {
     }
     throw apiErr('Unknown action', 'BAD_ACTION');
   }
-  return { handle, FRIEND, OWNER: OWNERC, reset() { LS.del('demo.items2'); LS.del('demo.slots'); } };
+  return { handle, FRIEND, OWNER: OWNERC, reset() { LS.del('demo.items2'); LS.del('demo.items3'); LS.del('demo.slots'); } };
 })();
 
 /* ---------- formatting ---------- */
@@ -685,7 +735,7 @@ function timeAgo(ms) {
 const byId = id => S.items.find(i => i.id === id);
 const nameMatch = it => myName && it.claimedBy && it.claimedBy.trim().toLowerCase() === myName.trim().toLowerCase();
 const hasToken = it => it.status === 'claimed' && !!mine[it.id];
-const isMine = it => it.status !== 'available' && (hasToken(it) || nameMatch(it));
+const isMine = it => (it.status === 'claimed' || it.status === 'gone') && (hasToken(it) || nameMatch(it));
 const isNew = it => it.status === 'available' && it.created && Date.now() - it.created < 48 * 36e5;
 const inLine = it => it.status === 'claimed' && !!queued[it.id] && !hasToken(it);
 const qPos = it => S.qpos[it.id] || 0;
@@ -707,12 +757,14 @@ function normSlots(a) {
     .filter(s => s.id && s.start && s.end > s.start).sort((x, y) => x.start - y.start);
 }
 
+const STATUSES = ['available', 'claimed', 'gone', 'keep'];
 function normalise(it) {
   return {
     id: String(it.id), title: String(it.title || 'Untitled'), description: String(it.description || ''), category: String(it.category || ''),
     condition: String(it.condition || ''), dimensions: String(it.dimensions || ''), price: String(it.price ?? ''), room: String(it.room || ''),
     pickup: String(it.pickup || ''), photos: Array.isArray(it.photos) ? it.photos.filter(Boolean).map(String) : [],
-    status: ['available', 'claimed', 'gone'].includes(it.status) ? it.status : 'available', claimedBy: String(it.claimedBy || ''),
+    status: STATUSES.includes(it.status) ? it.status : 'available', claimedBy: String(it.claimedBy || ''),
+    quantity: Math.min(999, Math.max(1, Math.floor(+it.quantity) || 1)), measured: it.measured === true,
     claimedAt: +it.claimedAt || 0, claimMessage: String(it.claimMessage || ''), created: +it.created || 0, updated: +it.updated || 0,
     pickupSlot: String(it.pickupSlot || ''),
     waitlist: Array.isArray(it.waitlist) ? it.waitlist.filter(e => e && e.name).map(e => ({ name: String(e.name), at: +e.at || 0, message: String(e.message || ''), slot: String(e.slot || '') })) : [],
@@ -766,6 +818,7 @@ function paintStatic() {
   $('#fab').innerHTML = icon('plus');
   $('[data-act=add]', $('#ownerBar')).innerHTML = icon('plus') + 'Add item';
   $('[data-act=invite]').innerHTML = icon('link') + 'Copy invite link';
+  $('[data-act=export]').innerHTML = icon('download') + 'Export';
 }
 
 function renderAll() {
@@ -796,14 +849,22 @@ function renderChips() {
     available: all.filter(i => i.status === 'available').length,
     claimed: all.filter(i => i.status === 'claimed').length,
     mine: all.filter(i => isMine(i) || inLine(i)).length,
+    keep: all.filter(i => i.status === 'keep').length,
     all: all.length,
   };
-  const st = [['available', 'Available'], ['claimed', 'Claimed'], ['mine', 'My claims'], ['all', 'All']];
+  const owner = S.role === 'owner';
+  if (S.filter === 'keep' && !owner) S.filter = 'available';
+  if (S.filter === 'mine' && owner) S.filter = 'available';
+  const st = owner ? [['available', 'Available'], ['claimed', 'Claimed'], ['keep', 'Keeping'], ['all', 'All']]
+    : [['available', 'Available'], ['claimed', 'Claimed'], ['mine', 'My claims'], ['all', 'All']];
   $('#statusChips').innerHTML = st.map(([k, l]) =>
     `<button class="chip" data-filter="${k}" aria-pressed="${S.filter === k}">${l}<span class="n">${counts[k]}</span></button>`).join('');
 
   const cats = {};
-  all.forEach(i => { if (i.status !== 'gone' || S.filter === 'all') { const c = i.category || 'Other'; cats[c] = (cats[c] || 0) + 1; } });
+  all.forEach(i => {
+    const show = S.filter === 'all' || (S.filter === 'keep' ? i.status === 'keep' : i.status !== 'gone' && i.status !== 'keep');
+    if (show) { const c = i.category || 'Other'; cats[c] = (cats[c] || 0) + 1; }
+  });
   const names = Object.keys(cats).sort((a, b) => a.localeCompare(b));
   if (S.cat !== 'all' && !cats[S.cat]) S.cat = 'all';
   $('#catChips').hidden = names.length < 2;
@@ -813,7 +874,7 @@ function renderChips() {
 
 function visibleItems() {
   const q = S.q.trim().toLowerCase();
-  const rank = { available: 0, claimed: 1, gone: 2 };
+  const rank = { available: 0, claimed: 1, keep: 2, gone: 3 };
   const cmp = {
     new: (a, b) => b.created - a.created,
     az: (a, b) => a.title.localeCompare(b.title),
@@ -823,6 +884,7 @@ function visibleItems() {
     if (S.filter === 'available' && it.status !== 'available') return false;
     if (S.filter === 'claimed' && it.status !== 'claimed') return false;
     if (S.filter === 'mine' && !isMine(it) && !inLine(it)) return false;
+    if (S.filter === 'keep' && it.status !== 'keep') return false;
     if (S.cat !== 'all' && (it.category || 'Other') !== S.cat) return false;
     if (q && !`${it.title} ${it.description} ${it.category} ${it.room} ${it.claimedBy}`.toLowerCase().includes(q)) return false;
     return true;
@@ -836,11 +898,12 @@ function cardHTML(it, idx = 99) {
     : inLine(it) ? `<span class="tag t-queue">In line${qPos(it) ? ' · #' + qPos(it) : ''}</span>`
     : `<span class="tag t-claimed">Claimed · ${esc(it.claimedBy)}</span>`;
   else if (it.status === 'gone') tag = '<span class="tag t-gone">Gone</span>';
+  else if (it.status === 'keep') tag = '<span class="tag t-keep">Keeping</span>';
   else if (isNew(it)) tag = '<span class="tag t-new">New</span>';
   const pl = priceLabel(it.price);
   return `<button class="card is-${it.status}" data-open="${esc(it.id)}" aria-label="${esc(it.title)}">
     <span class="ph">${imgTag(it.photos[0], 640, it.title, { sizes: '(max-width:560px) 50vw, 300px', eager: idx < 4 })}${tag}${it.photos.length > 1 ? `<span class="pcount">${icon('camera')}${it.photos.length}</span>` : ''}</span>
-    <span class="cbody"><span class="ctitle">${esc(it.title)}</span>
+    <span class="cbody"><span class="ctitle">${esc(it.title)}${it.quantity > 1 ? ` <span class="qty mono">× ${it.quantity}</span>` : ''}</span>
       <span class="cmeta"><span class="price${pl === 'Free' ? ' free' : ''}">${esc(pl)}</span>${it.dimensions ? `<span class="dims mono">${esc(shortDims(it.dimensions))}</span>` : ''}</span>
     </span></button>`;
 }
@@ -856,6 +919,7 @@ function renderGrid() {
     else if (S.q) msg = `Nothing matches “${esc(S.q)}”.`;
     else if (S.filter === 'mine') msg = 'You haven’t claimed anything yet.';
     else if (S.filter === 'available') msg = 'Everything has been claimed! Look under <b>All</b> to see what went where.';
+    else if (S.filter === 'keep') msg = 'Nothing marked to keep. In the editor, tick <b>Keep — don’t offer to friends</b>.';
     else msg = 'Nothing here.';
     empty.innerHTML = icon('box') + `<p>${msg}</p>`;
   }
@@ -878,7 +942,7 @@ function renderFoot() {
 }
 
 /* ---------- detail ---------- */
-const sigOf = it => it ? [it.status, it.claimedBy, it.claimMessage, it.updated, mine[it.id] || '', queued[it.id] || '', S.qpos[it.id] || '',
+const sigOf = it => it ? [it.status, it.quantity, it.claimedBy, it.claimMessage, it.updated, mine[it.id] || '', queued[it.id] || '', S.qpos[it.id] || '',
   it.pickupSlot, it.waitlist.map(w => w.name).join(','), S.slots.map(s => s.id + s.start + s.end).join()].join('|') : '';
 
 function openDetail(id) {
@@ -895,6 +959,7 @@ function renderDetail() {
   S.openSig = sigOf(it);
   const pl = priceLabel(it.price);
   const facts = [
+    it.quantity > 1 && ['Quantity', `<span class="mono">${it.quantity}</span>`],
     it.dimensions && ['Dimensions', `<span class="mono">${esc(it.dimensions)}</span>`],
     it.pickup && ['Pickup', esc(it.pickup)],
     it.room && ['Where', esc(it.room)],
@@ -907,7 +972,7 @@ function renderDetail() {
       <div class="info">
         <div class="badges">${[it.category, it.condition].filter(Boolean).map(b => `<span class="badge">${esc(b)}</span>`).join('')}</div>
         <h2>${esc(it.title)}</h2>
-        <div class="pricebig${pl === 'Free' ? ' free' : ''}">${esc(pl)}</div>
+        ${it.status === 'keep' ? '' : `<div class="pricebig${pl === 'Free' ? ' free' : ''}">${esc(pl)}</div>`}
         ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : ''}
         ${it.description ? `<p class="desc">${esc(it.description)}</p>` : ''}
         <div id="claimSlot">${claimHTML(it)}</div>
@@ -951,9 +1016,99 @@ function bindGallery() {
   upgradeImg($('img', g));
   const cur = byId(S.openId);
   if (cur && cur.photos.length > 1) { const n = cur.photos.length; warm(cur.photos[(S.gIdx + 1) % n]); warm(cur.photos[(S.gIdx - 1 + n) % n]); }
-  let x0 = null;
-  g.addEventListener('pointerdown', e => { x0 = e.clientX; });
-  g.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) goPhoto(S.gIdx + (dx < 0 ? 1 : -1)); });
+  let x0 = null, y0 = null;
+  g.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; });
+  g.addEventListener('pointerup', e => {
+    if (x0 == null) return; const dx = e.clientX - x0, dy = e.clientY - y0; x0 = y0 = null;
+    if (Math.abs(dx) > 40) return goPhoto(S.gIdx + (dx < 0 ? 1 : -1));
+    // a tap (not a swipe) on the photo opens it full screen
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8 && e.target.tagName === 'IMG') openLightbox();
+  });
+}
+
+/* ---------- full-screen photo with pinch/drag zoom ---------- */
+const LB = { s: 1, tx: 0, ty: 0, ptrs: new Map(), pinch: null, drag: null, lastTap: 0, moved: false };
+function lbApply(ease) {
+  const st = $('#lbStage'); st.classList.toggle('ease', !!ease); st.classList.toggle('drag', !ease);
+  $('#lbImg').style.transform = `translate(${LB.tx}px, ${LB.ty}px) scale(${LB.s})`;
+}
+function lbClamp() {
+  // keep the zoomed photo from being dragged completely off screen
+  const img = $('#lbImg'), r = img.getBoundingClientRect(), st = $('#lbStage').getBoundingClientRect();
+  const w = r.width / (LB.s || 1) * LB.s, h = r.height / (LB.s || 1) * LB.s;
+  const mx = Math.max(0, (w - st.width) / 2), my = Math.max(0, (h - st.height) / 2);
+  LB.tx = Math.min(mx, Math.max(-mx, LB.tx)); LB.ty = Math.min(my, Math.max(-my, LB.ty));
+}
+function lbReset(ease) { LB.s = 1; LB.tx = 0; LB.ty = 0; lbApply(ease); }
+function lbShow() {
+  const it = byId(S.openId); if (!it || !it.photos.length) return;
+  const n = it.photos.length, ref = it.photos[S.gIdx];
+  const img = $('#lbImg');
+  img.src = photoURL(ref, 1600); img.alt = it.title || '';
+  $('#lbCount').textContent = n > 1 ? `${S.gIdx + 1} / ${n}` : '';
+  $('#lbDlg').classList.toggle('single', n < 2);
+  lbReset(false);
+  if (n > 1) { warm(it.photos[(S.gIdx + 1) % n]); warm(it.photos[(S.gIdx - 1 + n) % n]); }
+}
+function openLightbox() {
+  const d = $('#lbDlg'); if (!d.open) d.showModal();
+  lbShow();
+}
+function lbGo(delta) {
+  const it = byId(S.openId); if (!it || it.photos.length < 2) return;
+  const n = it.photos.length; S.gIdx = (S.gIdx + delta + n) % n;
+  lbShow();
+  // keep the gallery behind in step
+  const gal = $('#gallery'); if (gal) { gal.innerHTML = galleryHTML(it); bindGallery(); }
+}
+{
+  const d = $('#lbDlg'), st = $('#lbStage');
+  const dist = () => { const [a, b] = [...LB.ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  const mid = () => { const [a, b] = [...LB.ptrs.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+  st.addEventListener('pointerdown', e => {
+    st.setPointerCapture(e.pointerId);
+    LB.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); LB.moved = false;
+    if (LB.ptrs.size === 2) { LB.pinch = { d: dist(), s: LB.s, m: mid(), tx: LB.tx, ty: LB.ty }; LB.drag = null; }
+    else if (LB.ptrs.size === 1) LB.drag = { x: e.clientX, y: e.clientY, tx: LB.tx, ty: LB.ty };
+  });
+  st.addEventListener('pointermove', e => {
+    if (!LB.ptrs.has(e.pointerId)) return;
+    LB.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (LB.ptrs.size === 2 && LB.pinch) {
+      const s = Math.min(6, Math.max(1, LB.pinch.s * dist() / LB.pinch.d)), m = mid();
+      // zoom about the pinch midpoint
+      const cx = m.x - st.clientWidth / 2, cy = m.y - st.clientHeight / 2, k = s / LB.pinch.s;
+      LB.s = s; LB.tx = cx - (cx - LB.pinch.tx) * k + (m.x - LB.pinch.m.x); LB.ty = cy - (cy - LB.pinch.ty) * k + (m.y - LB.pinch.m.y);
+      LB.moved = true; lbClamp(); lbApply(false);
+    } else if (LB.ptrs.size === 1 && LB.drag) {
+      const dx = e.clientX - LB.drag.x, dy = e.clientY - LB.drag.y;
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) LB.moved = true;
+      if (LB.s > 1.02) { LB.tx = LB.drag.tx + dx; LB.ty = LB.drag.ty + dy; lbClamp(); lbApply(false); }
+    }
+  });
+  const up = e => {
+    const had = LB.ptrs.size, drag = LB.drag; LB.ptrs.delete(e.pointerId);
+    if (LB.ptrs.size === 1) { const [p] = [...LB.ptrs.values()]; LB.drag = { x: p.x, y: p.y, tx: LB.tx, ty: LB.ty }; LB.pinch = null; return; }
+    if (LB.ptrs.size) return;
+    LB.pinch = null; LB.drag = null;
+    if (had !== 1 || !drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (LB.s <= 1.02 && Math.abs(dx) > 50 && Math.abs(dy) < 60) return lbGo(dx < 0 ? 1 : -1);   // swipe between photos
+    if (LB.moved) return;
+    const now = Date.now();
+    if (now - LB.lastTap < 320) {                                                            // double-tap: zoom in / out
+      LB.lastTap = 0;
+      if (LB.s > 1.02) lbReset(true);
+      else { const cx = e.clientX - st.clientWidth / 2, cy = e.clientY - st.clientHeight / 2; LB.s = 2.5; LB.tx = -cx * 1.5; LB.ty = -cy * 1.5; lbClamp(); lbApply(true); }
+    } else LB.lastTap = now;
+  };
+  st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+  st.addEventListener('wheel', e => { e.preventDefault(); const s = Math.min(6, Math.max(1, LB.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15))); const cx = e.clientX - st.clientWidth / 2, cy = e.clientY - st.clientHeight / 2, k = s / LB.s; LB.tx = cx - (cx - LB.tx) * k; LB.ty = cy - (cy - LB.ty) * k; LB.s = s; if (s <= 1.001) { LB.tx = LB.ty = 0; } lbClamp(); lbApply(false); }, { passive: false });
+  d.addEventListener('click', e => {
+    const b = e.target.closest('[data-lb]'); if (!b) return;
+    if (b.dataset.lb === 'close') d.close(); else lbGo(+b.dataset.lb);
+  });
+  d.addEventListener('close', () => { LB.ptrs.clear(); LB.pinch = LB.drag = null; $('#lbImg').removeAttribute('src'); });
 }
 
 function lastSlot() { const s = LS.get('slot', ''); return s === 'other' || upcomingSlots().some(x => x.id === s) ? s : ''; }
@@ -1030,6 +1185,8 @@ function claimHTML(it) {
       </div>
     </div>`;
   }
+  if (it.status === 'keep') return `<div class="claimbox keep"><h3>${icon('keep')}You’re keeping this</h3>
+    <p>Friends can’t see it. It’s still part of your inventory export, marked for storage.</p></div>`;
   return `<div class="claimbox gone"><h3>${icon('box')}Found a new home</h3>
     <p>${it.claimedBy ? `Went to <b>${esc(it.claimedBy)}</b>.` : 'This one is gone.'}</p></div>`;
 }
@@ -1042,11 +1199,16 @@ function ownerToolsHTML(it) {
     b.push(`<button class="btn primary" data-act="gone" data-id="${id}">${icon('check')}Handed over</button>`);
     b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('undo')}${next ? 'Pass to ' + esc(next.name) : 'Release claim'}</button>`);
   } else if (it.status === 'available') {
+    b.push(`<button class="btn" data-act="keep" data-id="${id}">${icon('keep')}Keep it</button>`);
     b.push(`<button class="btn" data-act="gone" data-id="${id}">${icon('box')}Mark as gone</button>`);
+  } else if (it.status === 'keep') {
+    b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('users')}Offer to friends</button>`);
   } else {
     b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('undo')}Make available again</button>`);
   }
   b.push(`<button class="btn danger" data-act="delete" data-id="${id}">${icon('trash')}Delete</button>`);
+  const dimsOk = !!dimsCm(it.dimensions);
+  const ms = `<div class="hint">Dimensions: <b>${!it.dimensions ? 'not entered' : !dimsOk ? 'incomplete' : it.measured ? 'measured' : 'not measured yet'}</b></div>`;
   const pk = it.status === 'claimed' && (S.slots.length || it.pickupSlot)
     ? `<div class="hint">Pickup: <b>${esc(pickupText(it.pickupSlot) || 'no time chosen yet')}</b></div>` : '';
   const wl = it.status === 'claimed' && it.waitlist.length ? `<div><div class="hint">Waitlist</div><ol class="queue">${it.waitlist.map((w, i) => `
@@ -1055,7 +1217,7 @@ function ownerToolsHTML(it) {
   return `<div class="owner-tools">
     <div class="lbl"><span class="pill-owner">Owner</span>Only you see this</div>
     ${it.status !== 'available' && it.claimMessage ? `<div><div class="hint">Note from ${esc(it.claimedBy)}:</div><div class="claimbox claimed" style="padding:10px 12px;margin-top:4px"><p style="white-space:pre-wrap">${esc(it.claimMessage)}</p></div></div>` : ''}
-    ${pk}${wl}
+    ${ms}${pk}${wl}
     <div class="btnrow">${b.join('')}</div>
   </div>`;
 }
@@ -1129,6 +1291,78 @@ async function simple(btn, action, payload, okMsg, confirmMsg) {
   }
 }
 
+/* ---------- inventory export (owner) — contract shared with Storage Studio, change only by agreement ---------- */
+const UNIT_TO_CM = { mm: 0.1, cm: 1, m: 100, in: 2.54 };
+function toCm(v, unit) {
+  const n = parseFloat(String(v ?? '').replace(',', '.'));
+  if (!isFinite(n) || n <= 0 || !(unit in UNIT_TO_CM)) return null;
+  return Math.round(n * UNIT_TO_CM[unit] * 10) / 10;
+}
+// { w, d, h, unit: 'cm' } when width, depth and height are all known; otherwise null
+function dimsCm(raw) {
+  if (!String(raw || '').trim()) return null;
+  const p = parseDims(raw);
+  if (!p.parsed) return null;
+  const w = toCm(p.w, p.unit), d = toCm(p.d, p.unit), h = toCm(p.h, p.unit);
+  return w != null && d != null && h != null ? { w, d, h, unit: 'cm' } : null;
+}
+// builds the export from the server's reply, copying only the fields the contract allows
+function buildExport(r, now = new Date()) {
+  return {
+    format: 'move-inventory', version: 1,
+    exportedAt: r.exportedAt || now.toISOString(),
+    source: r.source || location.origin + location.pathname,
+    items: (r.items || []).map(it => {
+      const status = STATUSES.includes(it.status) ? it.status : 'available';
+      return {
+        id: String(it.id), title: String(it.title || ''), category: String(it.category || ''), room: String(it.room || ''),
+        status, disposition: status === 'keep' ? 'store' : 'give',
+        quantity: Math.min(999, Math.max(1, Math.floor(+it.quantity) || 1)), measured: it.measured === true,
+        dimensions: dimsCm(it.dimensionsRaw), dimensionsRaw: String(it.dimensionsRaw || ''), updated: +it.updated || 0,
+      };
+    }),
+  };
+}
+const EXPORT_KEYS = ['id', 'title', 'category', 'room', 'status', 'disposition', 'quantity', 'measured', 'dimensions', 'dimensionsRaw', 'updated'];
+function validateExport(x) {
+  const err = [];
+  if (!x || x.format !== 'move-inventory') err.push('format');
+  if (!x || x.version !== 1) err.push('version');
+  if (!x || isNaN(Date.parse(x.exportedAt))) err.push('exportedAt');
+  if (!x || typeof x.source !== 'string') err.push('source');
+  if (!x || !Array.isArray(x.items)) return err.concat('items');
+  x.items.forEach((it, i) => {
+    const at = `items[${i}]`;
+    const extra = Object.keys(it).filter(k => !EXPORT_KEYS.includes(k)); if (extra.length) err.push(`${at} has extra fields: ${extra.join(',')}`);
+    if (typeof it.id !== 'string' || !it.id) err.push(`${at}.id`);
+    ['title', 'category', 'room', 'dimensionsRaw'].forEach(k => { if (typeof it[k] !== 'string') err.push(`${at}.${k}`); });
+    if (!STATUSES.includes(it.status)) err.push(`${at}.status`);
+    if (!['give', 'store', 'ship', 'undecided'].includes(it.disposition)) err.push(`${at}.disposition`);
+    if (!Number.isInteger(it.quantity) || it.quantity < 1) err.push(`${at}.quantity`);
+    if (typeof it.measured !== 'boolean') err.push(`${at}.measured`);
+    if (typeof it.updated !== 'number') err.push(`${at}.updated`);
+    const d = it.dimensions;
+    if (d !== null && !(d && d.unit === 'cm' && ['w', 'd', 'h'].every(k => typeof d[k] === 'number' && d[k] > 0 && Math.round(d[k] * 10) === d[k] * 10) && Object.keys(d).length === 4)) err.push(`${at}.dimensions`);
+  });
+  return err;
+}
+async function doExport(btn) {
+  const prev = btn.innerHTML; btn.disabled = true; btn.textContent = 'Exporting…';
+  try {
+    const data = buildExport(await api('export'));
+    const bad = validateExport(data);
+    if (bad.length) throw new Error('The export didn’t pass its checks (' + bad.slice(0, 3).join('; ') + ').');
+    const blob = new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `move-inventory-${todayISO()}.json`;
+    document.body.append(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    const full = data.items.filter(i => i.dimensions).length;
+    toast(`Exported ${data.items.length} item${data.items.length === 1 ? '' : 's'} · ${full} with full dimensions.`, 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+  finally { if (btn.isConnected) { btn.disabled = false; btn.innerHTML = prev; } }
+}
+
 async function copyText(text, okMsg) {
   try { await navigator.clipboard.writeText(text); toast(okMsg, 'ok'); }
   catch { window.prompt('Copy this:', text); }
@@ -1187,12 +1421,14 @@ document.addEventListener('click', async e => {
       if (b && !confirm(`${b === 1 ? '1 person has' : b + ' people have'} booked this time. Remove it anyway? They’ll be asked to choose another.`)) return;
       return saveSlots(S.slots.filter(s => s.id !== sid), 'Time removed.');
     }
+    case 'keep': return simple(t, 'setStatus', { id, status: 'keep' }, 'Keeping it. Friends can’t see it any more.');
+    case 'export': return doExport(t);
     case 'gone': return simple(t, 'setStatus', { id, status: 'gone' }, it && it.status === 'claimed' ? `Marked as handed over to ${it.claimedBy}.` : 'Marked as gone.');
     case 'avail': {
       const next = it && it.status === 'claimed' && it.waitlist[0];
       const r = await simple(t, 'setStatus', { id, status: 'available' }, null,
         it && it.status === 'claimed' ? (next ? `Release ${it.claimedBy}’s claim? It passes to ${next.name}, who’s next in line.` : `Release ${it.claimedBy}’s claim? They won’t be notified automatically.`) : null);
-      if (r) toast(r.item && r.item.status === 'claimed' ? `Passed to ${r.item.claimedBy}.` : 'Available again.', 'ok');
+      if (r) toast(r.item && r.item.status === 'claimed' ? `Passed to ${r.item.claimedBy}.` : it && it.status === 'keep' ? 'Now offered to friends.' : 'Available again.', 'ok');
       return;
     }
     case 'delete': {
@@ -1219,6 +1455,7 @@ document.addEventListener('click', async e => {
 });
 
 document.addEventListener('keydown', e => {
+  if ($('#lbDlg').open) { if (e.key === 'ArrowRight') lbGo(1); if (e.key === 'ArrowLeft') lbGo(-1); return; }
   if (!$('#detailDlg').open || e.target.matches('input,textarea,select')) return;
   if (e.key === 'ArrowRight') goPhoto(S.gIdx + 1);
   if (e.key === 'ArrowLeft') goPhoto(S.gIdx - 1);
@@ -1284,7 +1521,9 @@ function buildDims(w, d, h, unit) {
 function openEditor(id) {
   const it = id ? byId(id) : null;
   E = { id: it ? it.id : null, photos: (it ? it.photos : []).map(ref => ({ ref })), dims: it ? it.dimensions : '', dirty: false, busy: false };
-  const v = k => esc(it ? it[k] : '');
+  // a new item starts with the category and room you used last
+  const v = k => esc(it ? it[k] : k === 'category' ? LS.get('lastCat', '') : k === 'room' ? LS.get('lastRoom', '') : '');
+  const st = it ? it.status : 'available', canKeep = st === 'available' || st === 'keep';
   const dm = parseDims(E.dims);
   const cats = [...new Set([...S.items.map(i => i.category).filter(Boolean), ...DEFAULT_CATS])];
   const rooms = [...new Set(S.items.map(i => i.room).filter(Boolean))];
@@ -1308,20 +1547,28 @@ function openEditor(id) {
           <select class="input" name="du" aria-label="Unit">${['cm', 'mm', 'm', 'in'].map(u => `<option${u === dm.unit ? ' selected' : ''}>${u}</option>`).join('')}</select>
         </div>
         ${dm.parsed ? '' : `<span class="hint">Currently: <span class="mono">${esc(E.dims)}</span> — kept unless you fill in numbers.</span>`}
+        <span class="hint warn" id="dimNudge" hidden>Storage planning needs all three: width, depth and height.</span>
       </div>
       <label class="c2 field"><span>Price</span><input class="input" name="price" maxlength="30" value="${v('price')}" placeholder="Free"></label>
       <label class="c2 field"><span>Where is it</span><input class="input" name="room" list="roomList" maxlength="60" value="${v('room')}" placeholder="Living room">
         <datalist id="roomList">${rooms.map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
       <label class="c2 field"><span>Pickup</span><input class="input" name="pickup" maxlength="300" value="${v('pickup')}" placeholder="From 1 Dec"></label>
+      <label class="c2 field"><span>Quantity</span><input class="input mono" name="quantity" type="number" inputmode="numeric" min="1" max="999" step="1" value="${it ? it.quantity : 1}"></label>
+      <div class="c4 checks">
+        <label class="check"><input type="checkbox" name="measured"${it && it.measured ? ' checked' : ''}><span>Dimensions measured<small>Tick once you’ve checked them with a tape measure.</small></span></label>
+        <label class="check${canKeep ? '' : ' off'}"><input type="checkbox" name="keep"${st === 'keep' ? ' checked' : ''}${canKeep ? '' : ' disabled'}><span>Keep — don’t offer to friends<small>${canKeep ? 'Hidden from friends; exported for storage.' : st === 'claimed' ? 'Release the claim first.' : 'Already gone.'}</small></span></label>
+      </div>
     </div>
     <div class="efoot">
       <button type="button" class="btn" data-act="editor-cancel">Cancel</button>
       <button type="submit" class="btn primary" id="saveBtn">${it ? 'Save changes' : 'Add item'}</button>
     </div>`;
   renderPhotoGrid();
+  dimNudge();
   const d = $('#editorDlg');
   if (!d.open) d.showModal();
-  if (!it) setTimeout(() => $('[name=title]', d)?.focus(), 50);
+  // focus the title for a new item, unless the user has already moved into another field
+  if (!it) setTimeout(() => { if (!document.activeElement?.closest('#editorForm .field, #editorForm .check')) $('[name=title]', d)?.focus(); }, 50);
 }
 
 function renderPhotoGrid() {
@@ -1376,7 +1623,15 @@ $('#editorForm').addEventListener('drop', e => {
   const g = e.target.closest('#photoGrid'); if (!g || !E) return;
   e.preventDefault(); g.classList.remove('drop'); addPhotos(e.dataTransfer.files);
 });
-$('#editorForm').addEventListener('input', () => { if (E) E.dirty = true; });
+$('#editorForm').addEventListener('input', () => { if (E) { E.dirty = true; dimNudge(); } });
+// big things need all three dimensions for storage planning
+const NEEDS_DIMS = /^(furniture|electronics)$/i;
+function dimNudge() {
+  const f = $('#editorForm'), n = $('#dimNudge'); if (!f || !n || !E) return;
+  const val = k => (f.elements[k]?.value || '').trim();
+  const some = ['dw', 'dd', 'dh'].filter(val).length;
+  n.hidden = !(NEEDS_DIMS.test(val('category')) && some < 3 && (some > 0 || parseDims(E.dims).parsed));
+}
 $('#editorForm').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || !E) return;
   const i = +b.dataset.i;
@@ -1412,10 +1667,15 @@ $('#editorForm').addEventListener('submit', async e => {
       p.ref = r.id;
     }
     btn.textContent = 'Saving…';
+    const keepBox = f.elements.keep;
     const r = await api('saveItem', { item: {
       id: E.id, title, description: f.elements.description.value.trim(), category: val('category'), condition: val('condition'),
       dimensions: dims, price: val('price'), room: val('room'), pickup: val('pickup'), photos: E.photos.map(p => p.ref),
+      quantity: Math.min(999, Math.max(1, Math.floor(+val('quantity')) || 1)), measured: !!f.elements.measured?.checked,
+      ...(keepBox && !keepBox.disabled ? { keep: keepBox.checked } : {}),
     } });
+    if (val('category')) LS.set('lastCat', val('category'));
+    if (val('room')) LS.set('lastRoom', val('room'));
     const it = upsert(r.item);
     const wasNew = !E.id;
     E.busy = false; E.dirty = false;
@@ -1499,7 +1759,7 @@ function renderPickups() {
 }
 function pickupsText() {
   return pickupSections().map(sec => (sec.label ? sec.label.toUpperCase() + '\n' : '') + sec.groups.map(g => `${g.name}:\n` +
-    g.items.map(it => `  • ${it.title} (${priceLabel(it.price)})${it.claimMessage ? ' — “' + it.claimMessage.replace(/\s+/g, ' ') + '”' : ''}`).join('\n')).join('\n\n')).join('\n\n\n');
+    g.items.map(it => `  • ${it.title}${it.quantity > 1 ? ' × ' + it.quantity : ''} (${priceLabel(it.price)}${it.dimensions ? ', ' + shortDims(it.dimensions) : ''})${it.claimMessage ? ' — “' + it.claimMessage.replace(/\s+/g, ' ') + '”' : ''}`).join('\n')).join('\n\n')).join('\n\n\n');
 }
 
 /* ---------- gate, session, refresh ---------- */
@@ -1636,6 +1896,9 @@ async function boot() {
     renderFoot();
   }
 }
+
+// test hook for tests.html — only in ?demo, so it can never touch live data
+if (FORCED_DEMO) window.__MOVE_TEST__ = { parseDims, buildDims, shortDims, toCm, dimsCm, buildExport, validateExport, Mock };
 
 boot();
 })();
