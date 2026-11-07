@@ -236,6 +236,29 @@ dialog[open]{animation:pop .18s ease-out}
 .gmain img{width:100%;height:100%;object-fit:contain;display:block}
 .gmain .noimg{color:#5B6578}
 .gmain img{cursor:zoom-in}
+/* dimension arrows */
+svg.arrows{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:1}
+.dimtog{position:absolute;z-index:3;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.18);background:rgba(8,10,16,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;border-radius:999px;padding:5px 11px 5px 9px;font-size:12.5px;font-weight:500;line-height:1.2}
+.dimtog svg{width:15px;height:15px}
+.dimtog[aria-pressed=false]{color:rgba(255,255,255,.62)}
+.gmain .dimtog{left:12px;top:12px}
+dialog.lb .dimtog{left:12px;top:calc(12px + env(safe-area-inset-top))}
+.lbstage svg.arrows{transition:opacity .12s}
+.abody{padding:16px 20px 0;display:grid;gap:12px}
+@media (max-width:560px){.abody{padding:14px 14px 0}}
+.astage{position:relative;width:100%;aspect-ratio:4/3;max-height:58vh;background:#05070B;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.astage img{position:absolute;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.astage svg.arrows{pointer-events:auto;touch-action:none;cursor:crosshair}
+.aloupe{position:absolute;width:112px;height:112px;border-radius:50%;border:2px solid #fff;box-shadow:0 6px 22px rgba(0,0,0,.6);background-repeat:no-repeat;pointer-events:none;z-index:3}
+.aloupe::before,.aloupe::after{content:"";position:absolute;left:50%;top:50%;background:var(--neon-soft);transform:translate(-50%,-50%)}
+.aloupe::before{width:1.5px;height:22px}.aloupe::after{width:22px;height:1.5px}
+.achips{display:flex;flex-wrap:wrap;gap:8px}
+.achip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--surface-2);border-radius:9px;padding:7px 11px;font-size:14px;font-weight:500}
+.achip .k{font:600 12px 'Geist Mono',monospace;width:20px;height:20px;border-radius:5px;display:grid;place-items:center;background:rgba(255,255,255,.07);color:var(--muted)}
+.achip .v{font:12.5px 'Geist Mono',monospace;color:var(--muted)}
+.achip[aria-pressed=true]{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon)}
+.achip[aria-pressed=true] .k{background:var(--primary);color:#fff}
+.achip:disabled{opacity:.45;cursor:default}
 /* full-screen photo (lightbox) */
 dialog.lb,dialog.lb.narrow{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;padding:0;border-radius:0;background:#000;overflow:hidden;box-shadow:none}
 dialog.lb::backdrop{background:#000}
@@ -439,8 +462,9 @@ dialog.lb .lbhint{position:absolute;right:12px;bottom:calc(14px + env(safe-area-
 </div>
 
 <dialog id="detailDlg" aria-label="Item details"><div id="detailBody"></div></dialog>
-<dialog id="lbDlg" class="lb" aria-label="Photo, full screen"><div class="lbstage" id="lbStage"><img id="lbImg" alt="" decoding="async"></div><button type="button" class="x" data-lb="close" aria-label="Close photo">✕</button><button type="button" class="gnav prev" data-lb="-1" aria-label="Previous photo">‹</button><button type="button" class="gnav next" data-lb="1" aria-label="Next photo">›</button><span class="gcount" id="lbCount"></span><span class="lbhint">Pinch or double-tap to zoom</span></dialog>
+<dialog id="lbDlg" class="lb" aria-label="Photo, full screen"><div class="lbstage" id="lbStage"><img id="lbImg" alt="" decoding="async"><svg class="arrows" id="lbArrows" aria-hidden="true"></svg></div><button type="button" class="dimtog" data-act="arrows-toggle" hidden></button><button type="button" class="x" data-lb="close" aria-label="Close photo">✕</button><button type="button" class="gnav prev" data-lb="-1" aria-label="Previous photo">‹</button><button type="button" class="gnav next" data-lb="1" aria-label="Next photo">›</button><span class="gcount" id="lbCount"></span><span class="lbhint">Pinch or double-tap to zoom</span></dialog>
 <dialog id="editorDlg" class="narrow" aria-label="Edit item"><form id="editorForm" novalidate></form></dialog>
+<dialog id="arrowDlg" class="narrow" aria-label="Dimension arrows"><div id="arrowBody"></div></dialog>
 <dialog id="pickupsDlg" class="narrow" aria-label="Pickups"><div id="pickupsBody"></div></dialog>
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
@@ -483,6 +507,7 @@ const ICONS = {
   refresh: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
   download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   keep: '<path d="M6 3h12v18l-6-4-6 4z"/>',
+  ruler: '<path d="M3 16.5 16.5 3 21 7.5 7.5 21z"/><path d="m7.5 12 2 2M10.5 9l2 2M13.5 6l2 2"/>',
 };
 const icon = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
 
@@ -552,8 +577,10 @@ const Mock = (() => {
       { id: 's3', start: at(sat + 4, 18), end: at(sat + 4, 20) },
     ];
   }
-  const load = () => LS.get('demo.items3', null) || seed();
-  const save = items => { if (!LS.set('demo.items3', items)) throw apiErr('Demo storage is full — remove some photos or reset the demo.', 'QUOTA'); };
+  // the sofa photo in the demo comes with arrows already drawn
+  const seedArrows = list => { const so = list.find(i => i.id === 'd1'); if (so) so.dimLines = { photo: so.photos[0], lines: { w: [[0.135, 0.8], [0.865, 0.8]], h: [[0.07, 0.287], [0.07, 0.74]] } }; return list; };
+  const load = () => LS.get('demo.items4', null) || seedArrows(seed());
+  const save = items => { if (!LS.set('demo.items4', items)) throw apiErr('Demo storage is full — remove some photos or reset the demo.', 'QUOTA'); };
   const loadSlots = () => LS.get('demo.slots', null) || seedSlots();
   const view = (it, role) => {
     const v = { ...it, waitlist: (it.waitlist || []).map(e => role === 'owner' ? { name: e.name, at: e.at, message: e.message, slot: e.slot } : { name: e.name, at: e.at }) };
@@ -642,6 +669,7 @@ const Mock = (() => {
         if ('measured' in src) it.measured = !!src.measured;
         ['title', 'description', 'category', 'condition', 'dimensions', 'price', 'room', 'pickup'].forEach(k => it[k] = String(src[k] || '').trim());
         it.photos = (src.photos || []).slice(0, 10); it.updated = now;
+        if (it.dimLines && !it.photos.includes(it.dimLines.photo)) it.dimLines = null; // their photo was removed
         save(items); return { ok: true, item: view(it, 'owner') };
       }
       case 'deleteItem': { const i = items.findIndex(x => x.id === req.id); if (i >= 0) items.splice(i, 1); save(items); return { ok: true }; }
@@ -662,6 +690,16 @@ const Mock = (() => {
         items: items.map(i => ({ id: i.id, title: i.title, category: i.category, room: i.room, status: i.status, disposition: i.status === 'keep' ? 'store' : 'give',
           quantity: i.quantity || 1, measured: !!i.measured, dimensionsRaw: i.dimensions || '', updated: i.updated || 0 })),
       };
+      case 'saveArrows': {
+        const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
+        if (req.arrows == null) it.dimLines = null;
+        else {
+          const a = cleanArrows(req.arrows, it.photos);
+          if (!a) throw apiErr('Those arrows don’t belong to a photo of this item.', 'INVALID');
+          it.dimLines = a;
+        }
+        it.updated = now; save(items); return { ok: true, item: view(it, 'owner') };
+      }
       case 'saveSlots': {
         const out = (req.slots || []).map(s => ({ id: /^[\w-]{2,40}$/.test(s.id || '') ? s.id : uid(), start: +s.start, end: +s.end }))
           .filter(s => s.start && s.end > s.start).sort((a, b) => a.start - b.start).slice(0, 60);
@@ -670,7 +708,7 @@ const Mock = (() => {
     }
     throw apiErr('Unknown action', 'BAD_ACTION');
   }
-  return { handle, FRIEND, OWNER: OWNERC, reset() { LS.del('demo.items2'); LS.del('demo.items3'); LS.del('demo.slots'); } };
+  return { handle, FRIEND, OWNER: OWNERC, reset() { LS.del('demo.items2'); LS.del('demo.items3'); LS.del('demo.items4'); LS.del('demo.slots'); } };
 })();
 
 /* ---------- formatting ---------- */
@@ -765,6 +803,7 @@ function normalise(it) {
     pickup: String(it.pickup || ''), photos: Array.isArray(it.photos) ? it.photos.filter(Boolean).map(String) : [],
     status: STATUSES.includes(it.status) ? it.status : 'available', claimedBy: String(it.claimedBy || ''),
     quantity: Math.min(999, Math.max(1, Math.floor(+it.quantity) || 1)), measured: it.measured === true,
+    dimLines: cleanArrows(it.dimLines, Array.isArray(it.photos) ? it.photos.map(String) : []),
     claimedAt: +it.claimedAt || 0, claimMessage: String(it.claimMessage || ''), created: +it.created || 0, updated: +it.updated || 0,
     pickupSlot: String(it.pickupSlot || ''),
     waitlist: Array.isArray(it.waitlist) ? it.waitlist.filter(e => e && e.name).map(e => ({ name: String(e.name), at: +e.at || 0, message: String(e.message || ''), slot: String(e.slot || '') })) : [],
@@ -943,7 +982,7 @@ function renderFoot() {
 
 /* ---------- detail ---------- */
 const sigOf = it => it ? [it.status, it.quantity, it.claimedBy, it.claimMessage, it.updated, mine[it.id] || '', queued[it.id] || '', S.qpos[it.id] || '',
-  it.pickupSlot, it.waitlist.map(w => w.name).join(','), S.slots.map(s => s.id + s.start + s.end).join()].join('|') : '';
+  it.pickupSlot, it.waitlist.map(w => w.name).join(','), S.slots.map(s => s.id + s.start + s.end).join(), JSON.stringify(it.dimLines)].join('|') : '';
 
 function openDetail(id) {
   const it = byId(id); if (!it) return;
@@ -1013,7 +1052,9 @@ function goPhoto(i) {
 }
 function bindGallery() {
   const g = $('#gmain'); if (!g) return;
-  upgradeImg($('img', g));
+  const gi = $('img', g);
+  if (gi) { gi.addEventListener('load', galleryArrows); if (gi.complete) galleryArrows(); }
+  upgradeImg(gi);
   const cur = byId(S.openId);
   if (cur && cur.photos.length > 1) { const n = cur.photos.length; warm(cur.photos[(S.gIdx + 1) % n]); warm(cur.photos[(S.gIdx - 1 + n) % n]); }
   let x0 = null, y0 = null;
@@ -1026,11 +1067,212 @@ function bindGallery() {
   });
 }
 
+/* ---------- dimension arrows ---------- */
+// Stored per item as { photo: <photo id>, lines: { w: [[x, y], [x, y]], d, h } }; x and y are fractions of the
+// photo's width and height. Only positions are stored — the numbers always come from the item's dimensions.
+const DIM_KEYS = [['w', 'Width', 'W'], ['d', 'Depth', 'D'], ['h', 'Height', 'H']];
+const SVGNS = 'http://www.w3.org/2000/svg';
+let arrowsOn = LS.get('arrows', true);
+function cleanArrows(a, photos) {
+  if (!a || typeof a !== 'object' || !photos.includes(String(a.photo))) return null;
+  const lines = {};
+  for (const [k] of DIM_KEYS) {
+    const L = a.lines && a.lines[k];
+    if (!Array.isArray(L) || L.length !== 2) continue;
+    const pts = L.map(p => Array.isArray(p) && p.length === 2 ? p.map(v => { const n = Number(v); return isFinite(n) ? Math.round(Math.min(1, Math.max(0, n)) * 1e4) / 1e4 : NaN; }) : null);
+    if (pts.every(p => p && !isNaN(p[0]) && !isNaN(p[1]))) lines[k] = pts;
+  }
+  return Object.keys(lines).length ? { photo: String(a.photo), lines } : null;
+}
+const arrowsFor = (it, ref) => it && it.dimLines && it.dimLines.photo === ref ? it.dimLines : null;
+const dimVals = raw => { const p = parseDims(raw); return { w: p.w, d: p.d, h: p.h, unit: p.unit }; };
+// where a photo of natural size nw×nh sits inside a cw×ch box (object-fit: contain)
+function containBox(cw, ch, nw, nh, noUpscale) {
+  let k = Math.min(cw / nw, ch / nh); if (noUpscale) k = Math.min(1, k);
+  const w = nw * k, h = nh * k; return { x: (cw - w) / 2, y: (ch - h) / 2, w, h };
+}
+const placeBox = (el, b) => Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
+const svgEl = (tag, attrs, parent) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.append(e); return e; };
+const textWidth = (() => { const c = document.createElement('canvas').getContext('2d'); return (t, font) => { c.font = font; return c.measureText(t).width; }; })();
+
+function drawArrow(svg, a, b, key, val, active, box) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+  if (len < 2) return;
+  const u = [dx / len, dy / len], n = [-u[1], u[0]], g = svgEl('g', {}, svg);
+  const pts = arr => arr.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const head = (tip, dir) => [tip, [tip[0] + dir * u[0] * 11 + n[0] * 4.5, tip[1] + dir * u[1] * 11 + n[1] * 4.5], [tip[0] + dir * u[0] * 11 - n[0] * 4.5, tip[1] + dir * u[1] * 11 - n[1] * 4.5]];
+  const colour = active ? '#E6C8FF' : '#FFFFFF';
+  for (const [stroke, w] of [['rgba(0,0,0,.55)', 4.5], [colour, 1.75]]) {      // dark halo so it reads on any photo
+    svgEl('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke, 'stroke-width': w, 'stroke-linecap': 'round' }, g);
+    for (const p of [a, b]) svgEl('line', { x1: p[0] - n[0] * 8, y1: p[1] - n[1] * 8, x2: p[0] + n[0] * 8, y2: p[1] + n[1] * 8, stroke, 'stroke-width': w, 'stroke-linecap': 'round' }, g);
+  }
+  for (const [tip, dir] of [[a, 1], [b, -1]]) svgEl('polygon', { points: pts(head(tip, dir)), fill: colour, stroke: 'rgba(0,0,0,.5)', 'stroke-width': 1.2, 'paint-order': 'stroke', 'stroke-linejoin': 'round' }, g);
+  const font = "500 12.5px 'Geist Mono', ui-monospace, monospace";
+  const pw = textWidth(key + '  ' + val, font) + 18, ph = 24;
+  let m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  if (len < pw + 30) m = [m[0] + n[0] * 22, m[1] + n[1] * 22];             // short arrow: label beside it
+  if (box) m = [Math.min(box.w - pw / 2 - 3, Math.max(pw / 2 + 3, m[0])), Math.min(box.h - ph / 2 - 3, Math.max(ph / 2 + 3, m[1]))]; // keep it on the photo
+  svgEl('rect', { x: m[0] - pw / 2, y: m[1] - ph / 2, width: pw, height: ph, rx: 12, fill: active ? '#9B52FA' : '#8B3DF0', stroke: 'rgba(255,255,255,.28)', 'stroke-width': 1 }, g);
+  const tx = svgEl('text', { x: m[0], y: m[1] + 4.3, 'text-anchor': 'middle', fill: '#fff', style: 'font:' + font }, g);
+  svgEl('tspan', { 'fill-opacity': '.72' }, tx).textContent = key + '  ';
+  svgEl('tspan', {}, tx).textContent = val;
+}
+// draws all arrows into an svg sized box.w × box.h; arrows without a number are skipped unless editing
+function drawArrows(svg, box, lines, vals, opts = {}) {
+  svg.replaceChildren();
+  svg.setAttribute('viewBox', `0 0 ${box.w} ${box.h}`);
+  const px = p => [p[0] * box.w, p[1] * box.h];
+  for (const [k, , K] of DIM_KEYS) {
+    const L = lines[k], v = String(vals[k] || '').trim();
+    if (!L || (!v && !opts.edit)) continue;
+    drawArrow(svg, px(L[0]), px(L[1]), K, v ? `${v} ${vals.unit || 'cm'}` : '?', opts.active === k, box);
+  }
+  if (opts.handles) for (const [k] of DIM_KEYS) (lines[k] || []).forEach((p, end) => {
+    const q = px(p), on = opts.drag && opts.drag.k === k && opts.drag.end === end;
+    svgEl('circle', { cx: q[0], cy: q[1], r: on ? 9 : 7, fill: '#B45CFF', stroke: '#fff', 'stroke-width': 2 }, svg);
+  });
+}
+
+// the photo in the item details
+function galleryArrows() {
+  const g = $('#gmain'), it = byId(S.openId); if (!g || !it) return;
+  const a = arrowsFor(it, it.photos[S.gIdx]), img = $('img', g);
+  let svg = $('svg.arrows', g), tog = $('.dimtog', g);
+  if (!a || !img) { svg?.remove(); tog?.remove(); return; }
+  if (!svg) { svg = document.createElementNS(SVGNS, 'svg'); svg.setAttribute('class', 'arrows'); svg.setAttribute('aria-hidden', 'true'); g.append(svg); }
+  if (!tog) { tog = document.createElement('button'); tog.type = 'button'; tog.className = 'dimtog'; tog.dataset.act = 'arrows-toggle'; g.append(tog); }
+  tog.setAttribute('aria-pressed', arrowsOn); tog.title = arrowsOn ? 'Hide dimensions' : 'Show dimensions';
+  tog.innerHTML = icon('ruler') + 'Dimensions';
+  if (!arrowsOn || !img.naturalWidth) { svg.replaceChildren(); return; }
+  const b = containBox(g.clientWidth, g.clientHeight, img.naturalWidth, img.naturalHeight);
+  placeBox(svg, b); drawArrows(svg, b, a.lines, dimVals(it.dimensions));
+}
+// the full-screen photo (the arrows take the same zoom and pan as the photo)
+function lbArrows() {
+  const d = $('#lbDlg'); if (!d) return;
+  const st = $('#lbStage'), img = $('#lbImg'), svg = $('#lbArrows'), tog = $('.dimtog', d), it = byId(S.openId);
+  const a = d.open && it ? arrowsFor(it, it.photos[S.gIdx]) : null;
+  tog.hidden = !a;
+  if (a) { tog.setAttribute('aria-pressed', arrowsOn); tog.innerHTML = icon('ruler') + 'Dimensions'; }
+  if (!a || !arrowsOn || !img.naturalWidth) { svg.replaceChildren(); return; }
+  const f = containBox(st.clientWidth, st.clientHeight, img.naturalWidth, img.naturalHeight, true);
+  // the photo is scaled by LB.s around its centre and moved by LB.tx/ty — put the arrows where it is now
+  const b = { x: f.x + f.w / 2 + LB.tx - f.w * LB.s / 2, y: f.y + f.h / 2 + LB.ty - f.h * LB.s / 2, w: f.w * LB.s, h: f.h * LB.s };
+  placeBox(svg, b); drawArrows(svg, b, a.lines, dimVals(it.dimensions));
+}
+window.addEventListener('resize', () => { galleryArrows(); lbArrows(); if ($('#arrowDlg').open) aRender(); });
+
+// ----- the owner's arrow editor -----
+const AE = { id: null, ref: '', nat: { w: 4, h: 3 }, lines: {}, vals: {}, drag: null, dirty: false, existing: false, loaded: false };
+const AE_DEFAULT = { w: [[0.18, 0.88], [0.82, 0.88]], h: [[0.1, 0.22], [0.1, 0.82]], d: [[0.18, 0.2], [0.42, 0.07]] };
+function openArrows(id, vals, ref) {
+  const it = byId(id); if (!it || !it.photos.length) return;
+  const cur = it.dimLines;
+  Object.assign(AE, {
+    id, ref: cur ? cur.photo : ref && it.photos.includes(ref) ? ref : it.photos[0],
+    vals: vals || dimVals(it.dimensions), drag: null, existing: !!cur, loaded: false,
+    lines: cur ? JSON.parse(JSON.stringify(cur.lines)) : {},
+  });
+  if (!cur) for (const [k] of DIM_KEYS) if (String(AE.vals[k] || '').trim()) AE.lines[k] = JSON.parse(JSON.stringify(AE_DEFAULT[k]));
+  AE.dirty = !cur && Object.keys(AE.lines).length > 0;
+  const which = AE.ref === it.photos[0] ? 'the cover photo' : `photo ${it.photos.indexOf(AE.ref) + 1}`;
+  $('#arrowBody').innerHTML = `
+    <div class="dhead"><h2>Dimension arrows</h2><button type="button" class="x" data-act="arrows-close" aria-label="Close">${icon('x')}</button></div>
+    <div class="abody">
+      <div class="astage" id="aStage"><img id="aImg" alt=""><svg class="arrows" id="aSvg" aria-label="Photo with dimension arrows — drag the end points"></svg><div class="aloupe" id="aLoupe" hidden></div></div>
+      <div class="hint">${cur ? 'Drag the purple end points to adjust.' : 'Drag each purple end point onto a corner of the item.'} A magnifier appears while you drag. Arrows show on ${which}.</div>
+      <div class="achips" id="aChips"></div>
+      <label class="check"><input type="checkbox" id="aStraight" checked><span>Straighten height lines that are nearly vertical</span></label>
+    </div>
+    <div class="efoot">
+      ${cur ? `<button type="button" class="btn danger" data-act="arrows-remove" style="margin-right:auto">${icon('trash')}Remove arrows</button>` : ''}
+      <button type="button" class="btn" data-act="arrows-close">Cancel</button>
+      <button type="button" class="btn primary" data-act="arrows-save">Save arrows</button>
+    </div>`;
+  const img = $('#aImg'), src = photoURL(AE.ref, 1600);
+  img.dataset.ref = isRemote(AE.ref) ? '' : AE.ref; img.dataset.w = '1600';   // falls back to the Drive thumbnail like other photos
+  img.onload = () => { AE.loaded = true; AE.nat = { w: img.naturalWidth, h: img.naturalHeight }; $('#aStage').style.aspectRatio = Math.min(4 / 3, Math.max(3 / 4, AE.nat.w / AE.nat.h)); $('#aLoupe').style.backgroundImage = `url("${img.currentSrc || img.src}")`; aRender(); };
+  img.src = src;
+  bindArrowStage();
+  aRender();
+  const d = $('#arrowDlg'); if (!d.open) d.showModal();
+}
+function aBox() { const st = $('#aStage'); return containBox(st.clientWidth, st.clientHeight, AE.nat.w, AE.nat.h); }
+function aRender() {
+  const st = $('#aStage'); if (!st) return;
+  const b = aBox();
+  placeBox($('#aImg'), b); placeBox($('#aSvg'), b);
+  // nothing to drag until the photo is in, so points can't shift as it loads
+  if (AE.loaded) drawArrows($('#aSvg'), b, AE.lines, AE.vals, { edit: true, handles: true, drag: AE.drag, active: AE.drag && AE.drag.k });
+  else $('#aSvg').replaceChildren();
+  $('#aChips').innerHTML = DIM_KEYS.map(([k, name, K]) => {
+    const v = String(AE.vals[k] || '').trim(), on = !!AE.lines[k];
+    return `<button type="button" class="achip" data-act="arrows-dim" data-k="${k}" aria-pressed="${on}"${v || on ? '' : ' disabled title="Add this measurement in Edit first"'}><span class="k">${K}</span>${name}<span class="v">${v ? esc(v + ' ' + (AE.vals.unit || 'cm')) : 'no value'}</span></button>`;
+  }).join('');
+}
+function bindArrowStage() {
+  const svg = $('#aSvg');
+  const norm = e => { const r = svg.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; };
+  const hit = p => {
+    const b = aBox(); let best = null, bd = 26;
+    for (const [k] of DIM_KEYS) (AE.lines[k] || []).forEach((q, end) => { const d = Math.hypot((q[0] - p[0]) * b.w, (q[1] - p[1]) * b.h); if (d < bd) { bd = d; best = { k, end }; } });
+    return best;
+  };
+  const straighten = (k, fixed, p) => {
+    if (k !== 'h' || !$('#aStraight')?.checked) return p;
+    const b = aBox(), dx = (p[0] - fixed[0]) * b.w, dy = (p[1] - fixed[1]) * b.h;
+    return Math.abs(dx) < Math.abs(dy) * Math.tan(6 * Math.PI / 180) ? [fixed[0], p[1]] : p;
+  };
+  const loupe = p => {
+    const st = $('#aStage'), b = aBox(), L = $('#aLoupe'), Z = 2.6, R = 56, x = b.x + p[0] * b.w, y = b.y + p[1] * b.h;
+    L.hidden = false;
+    L.style.backgroundSize = `${b.w * Z}px ${b.h * Z}px`;
+    L.style.backgroundPosition = `${-(p[0] * b.w * Z - R)}px ${-(p[1] * b.h * Z - R)}px`;
+    let ly = y - R * 2 - 34; if (ly < 6) ly = y + 34;
+    L.style.left = Math.max(6, Math.min(st.clientWidth - R * 2 - 6, x - R)) + 'px'; L.style.top = ly + 'px';
+  };
+  svg.addEventListener('pointerdown', e => {
+    const h = hit(norm(e)); if (!h) return;
+    AE.drag = h; svg.setPointerCapture(e.pointerId); e.preventDefault();
+    loupe(AE.lines[h.k][h.end]); aRender();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!AE.drag) return;
+    const L = AE.lines[AE.drag.k];
+    L[AE.drag.end] = straighten(AE.drag.k, L[1 - AE.drag.end], norm(e));
+    AE.dirty = true; loupe(L[AE.drag.end]); aRender();
+  });
+  const end = () => { if (!AE.drag) return; AE.drag = null; $('#aLoupe').hidden = true; aRender(); };
+  svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+}
+function closeArrows(force) {
+  if (!force && AE.dirty && !confirm('Discard your arrow changes?')) return;
+  $('#arrowDlg').close();
+}
+$('#arrowDlg').addEventListener('cancel', e => { e.preventDefault(); closeArrows(); });
+async function saveArrows(btn, remove) {
+  const arrows = remove ? null : { photo: AE.ref, lines: AE.lines };
+  if (!remove && !Object.keys(AE.lines).length) return saveArrows(btn, true);
+  const prev = btn.innerHTML; btn.disabled = true; btn.textContent = remove ? 'Removing…' : 'Saving…';
+  try {
+    const r = await api('saveArrows', { id: AE.id, arrows });
+    upsert(r.item); AE.dirty = false; closeArrows(true);
+    toast(remove || !r.item.dimLines ? 'Arrows removed.' : 'Arrows saved. Friends see them on the photo.', 'ok');
+    renderAll();
+    if ($('#detailDlg').open && S.openId === AE.id) renderDetail();
+  } catch (e) { toast(e.message, 'err'); }
+  finally { if (btn.isConnected) { btn.disabled = false; btn.innerHTML = prev; } }
+}
+
 /* ---------- full-screen photo with pinch/drag zoom ---------- */
 const LB = { s: 1, tx: 0, ty: 0, ptrs: new Map(), pinch: null, drag: null, lastTap: 0, moved: false };
 function lbApply(ease) {
   const st = $('#lbStage'); st.classList.toggle('ease', !!ease); st.classList.toggle('drag', !ease);
   $('#lbImg').style.transform = `translate(${LB.tx}px, ${LB.ty}px) scale(${LB.s})`;
+  // arrows follow the zoom and pan; during the short zoom animation they fade out and come back in place
+  const ar = $('#lbArrows'); clearTimeout(LB.arrowT);
+  if (ease) { ar.style.opacity = 0; LB.arrowT = setTimeout(() => { lbArrows(); ar.style.opacity = ''; }, 190); }
+  else { ar.style.opacity = ''; lbArrows(); }
 }
 function lbClamp() {
   // keep the zoomed photo from being dragged completely off screen
@@ -1044,7 +1286,10 @@ function lbShow() {
   const it = byId(S.openId); if (!it || !it.photos.length) return;
   const n = it.photos.length, ref = it.photos[S.gIdx];
   const img = $('#lbImg');
+  $('#lbArrows').replaceChildren();
+  img.onload = lbArrows;
   img.src = photoURL(ref, 1600); img.alt = it.title || '';
+  lbArrows();
   $('#lbCount').textContent = n > 1 ? `${S.gIdx + 1} / ${n}` : '';
   $('#lbDlg').classList.toggle('single', n < 2);
   lbReset(false);
@@ -1108,7 +1353,7 @@ function lbGo(delta) {
     const b = e.target.closest('[data-lb]'); if (!b) return;
     if (b.dataset.lb === 'close') d.close(); else lbGo(+b.dataset.lb);
   });
-  d.addEventListener('close', () => { LB.ptrs.clear(); LB.pinch = LB.drag = null; $('#lbImg').removeAttribute('src'); });
+  d.addEventListener('close', () => { LB.ptrs.clear(); LB.pinch = LB.drag = null; $('#lbImg').removeAttribute('src'); $('#lbArrows').replaceChildren(); });
 }
 
 function lastSlot() { const s = LS.get('slot', ''); return s === 'other' || upcomingSlots().some(x => x.id === s) ? s : ''; }
@@ -1195,6 +1440,7 @@ function ownerToolsHTML(it) {
   if (S.role !== 'owner') return '';
   const id = esc(it.id), next = it.waitlist[0];
   const b = [`<button class="btn" data-act="edit" data-id="${id}">${icon('edit')}Edit</button>`];
+  if (it.photos.length) b.push(`<button class="btn" data-act="arrows" data-id="${id}">${icon('ruler')}${it.dimLines ? 'Edit arrows' : 'Dimension arrows'}</button>`);
   if (it.status === 'claimed') {
     b.push(`<button class="btn primary" data-act="gone" data-id="${id}">${icon('check')}Handed over</button>`);
     b.push(`<button class="btn" data-act="avail" data-id="${id}">${icon('undo')}${next ? 'Pass to ' + esc(next.name) : 'Release claim'}</button>`);
@@ -1382,7 +1628,7 @@ document.addEventListener('click', async e => {
   const t = e.target.closest('[data-open],[data-close],[data-act],[data-filter],[data-cat],[data-g],[data-gi]');
   if (!t) {
     // click on the dimmed backdrop closes a dialog
-    if (e.target instanceof HTMLDialogElement && e.target.id !== 'editorDlg') e.target.close();
+    if (e.target instanceof HTMLDialogElement && e.target.id !== 'editorDlg' && e.target.id !== 'arrowDlg') e.target.close();
     return;
   }
   if (t.dataset.open) return openDetail(t.dataset.open);
@@ -1437,6 +1683,16 @@ document.addEventListener('click', async e => {
       return;
     }
     case 'edit': return openEditor(id);
+    case 'arrows': return openArrows(id);
+    case 'arrows-toggle': arrowsOn = !arrowsOn; LS.set('arrows', arrowsOn); galleryArrows(); lbArrows(); return;
+    case 'arrows-close': return closeArrows();
+    case 'arrows-save': return saveArrows(t, false);
+    case 'arrows-remove': return saveArrows(t, true);
+    case 'arrows-dim': {
+      const k = t.dataset.k;
+      if (AE.lines[k]) delete AE.lines[k]; else AE.lines[k] = JSON.parse(JSON.stringify(AE_DEFAULT[k]));
+      AE.dirty = true; return aRender();
+    }
     case 'add': return openEditor(null);
     case 'pickups': return openPickups();
     case 'copy-pickups': return copyText(pickupsText(), 'Pickup list copied.');
@@ -1578,6 +1834,7 @@ function renderPhotoGrid() {
       <img src="${esc(p.preview || photoURL(p.ref, 300))}" alt="" data-ref="${esc(p.preview ? '' : p.ref)}" data-w="300">
       ${i === 0 ? '<span class="cover">Cover</span>' : ''}
       <span class="pbtns">
+        ${i === 0 && E.id && p.ref && byId(E.id)?.photos.includes(p.ref) ? `<button type="button" data-act="ph-arrows" aria-label="Dimension arrows on this photo" title="Dimension arrows">${icon('ruler')}</button>` : ''}
         ${i > 0 ? `<button type="button" data-act="ph-left" data-i="${i}" aria-label="Move earlier">${icon('left')}</button>` : ''}
         <button type="button" data-act="ph-del" data-i="${i}" aria-label="Remove photo">${icon('x')}</button>
       </span>
@@ -1636,6 +1893,11 @@ $('#editorForm').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b || !E) return;
   const i = +b.dataset.i;
   if (b.dataset.act === 'ph-del') { E.photos.splice(i, 1); E.dirty = true; renderPhotoGrid(); }
+  if (b.dataset.act === 'ph-arrows') {
+    // use the numbers currently in the form, so the labels match what you're editing
+    const f = $('#editorForm'), v = k => (f.elements[k]?.value || '').trim();
+    openArrows(E.id, { w: v('dw'), d: v('dd'), h: v('dh'), unit: v('du') || 'cm' }, E.photos[0].ref);
+  }
   if (b.dataset.act === 'ph-left') { const [p] = E.photos.splice(i, 1); E.photos.splice(i - 1, 0, p); E.dirty = true; renderPhotoGrid(); }
   if (b.dataset.act === 'editor-cancel') closeEditor();
 });
@@ -1898,7 +2160,7 @@ async function boot() {
 }
 
 // test hook for tests.html — only in ?demo, so it can never touch live data
-if (FORCED_DEMO) window.__MOVE_TEST__ = { parseDims, buildDims, shortDims, toCm, dimsCm, buildExport, validateExport, Mock };
+if (FORCED_DEMO) window.__MOVE_TEST__ = { parseDims, buildDims, shortDims, toCm, dimsCm, buildExport, validateExport, Mock, cleanArrows, containBox };
 
 boot();
 })();

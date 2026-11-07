@@ -31,6 +31,7 @@ GitHub Pages only serves files, so the Sheet does the remembering. Nothing perso
 
 - **Add items** from your phone (owner link: `…/dibs/#k=YOUR-OWNER-CODE`, opened once). Up to 10 photos each, a quantity for sets, and W/D/H dimensions. Tick **Dimensions measured** once you've checked them with a tape measure.
 - **Keep items** you're not giving away: tick **Keep — don't offer to friends** in the editor, or use **Keep it** on the item. Friends never receive kept items; they show under **Keeping** for you. **Offer to friends** puts one back on the list.
+- **Dimension arrows.** On an item's page, **Dimension arrows** (or the ruler button on the cover photo in the editor) opens the arrow editor: the arrows start roughly placed, and you drag their end points onto the item's corners. The numbers come from the item's W/D/H. Friends see the arrows on that photo, in the full-screen view too, with a **Dimensions** button to hide them. Deleting the photo deletes its arrows.
 - **Invite** with **Copy invite link**.
 - **Claims and waitlist.** First come, first served. If the claimer changes their mind, it passes to the next person in line automatically.
 - **Pickups** lists everything claimed, by pickup time and person. Add the times you're around there; **Copy list** gives a text version with dimensions, so people know what vehicle they need.
@@ -62,6 +63,6 @@ Add `?demo` to the page address to click around on sample data without touching 
 |---|---|
 | "The server sent an unexpected reply" | The deployment's *Who has access* isn't **Anyone**, or `API_URL` is wrong. |
 | A change to `Code.gs` does nothing | Publish a **new version** (see above). |
-| Waitlist, pickup times, keep or export don't work | The page is newer than the backend: paste the current `Code.gs`, run `setup`, publish a new version. |
+| Waitlist, pickup times, keep, export or arrows don't work | The page is newer than the backend: paste the current `Code.gs`, run `setup`, publish a new version. |
 | Photos show a camera icon | Check the photo folder is shared "Anyone with the link". Work/school Google accounts can block this. |
 | No emails | Run `sendTestEmail` in Apps Script; check spam. Personal Gmail sends about 100 a day. |

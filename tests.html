@@ -56,7 +56,7 @@ iframe{display:none}
   }
 
   async function run(T) {
-    const { parseDims, buildDims, shortDims, toCm, dimsCm, buildExport, validateExport, Mock } = T;
+    const { parseDims, buildDims, shortDims, toCm, dimsCm, buildExport, validateExport, Mock, cleanArrows, containBox } = T;
     const O = { key: Mock.OWNER }, F = { key: Mock.FRIEND };
     const call = (who, action, extra = {}) => Mock.handle({ action, ...who, ...extra });
     const strip = p => ({ w: p.w, d: p.d, h: p.h, unit: p.unit });
@@ -140,6 +140,35 @@ iframe{display:none}
       const r = await call(O, 'saveItem', { item: { title: 'Desk', quantity: 1, measured: false, keep: true } });
       eq(r.item.status, 'keep'); ok(!ids(await call(F, 'list')).includes(r.item.id));
     });
+
+    group('Dimension arrows');
+    await test('positions are clamped to the photo and rounded', () => eq(cleanArrows({ photo: 'p1', lines: { w: [[-0.2, 0.123456], [1.4, 0.5]] } }, ['p1']), { photo: 'p1', lines: { w: [[0, 0.1235], [1, 0.5]] } }));
+    await test('broken or extra lines are dropped; nothing left → none', () => {
+      eq(cleanArrows({ photo: 'p1', lines: { w: [[0, 0]], h: [[0, 0], [0, 'x']], z: [[0, 0], [1, 1]], d: [[0.1, 0.2], [0.3, 0.4]] } }, ['p1']), { photo: 'p1', lines: { d: [[0.1, 0.2], [0.3, 0.4]] } });
+      eq(cleanArrows({ photo: 'p1', lines: { w: [[0, 0]] } }, ['p1']), null);
+    });
+    await test('arrows only count on a photo of the item', () => eq(cleanArrows({ photo: 'other', lines: { w: [[0, 0], [1, 1]] } }, ['p1']), null));
+    await test('photo placement (fit inside the frame)', () => {
+      eq(containBox(400, 300, 1200, 1600), { x: 87.5, y: 0, w: 225, h: 300 });
+      eq(containBox(4000, 3000, 1200, 1600, true), { x: 1400, y: 700, w: 1200, h: 1600 });
+    });
+    Mock.reset();
+    await test('the demo sofa shows arrows to friends', async () => { const so = (await call(F, 'list')).items.find(i => i.id === 'd1'); ok(so.dimLines && so.dimLines.photo === so.photos[0] && so.dimLines.lines.w, 'no arrows'); });
+    await test('friends cannot save arrows', async () => { const so = (await call(O, 'list')).items.find(i => i.id === 'd1'); await rejects(call(F, 'saveArrows', { id: 'd1', arrows: { photo: so.photos[0], lines: { w: [[0, 0], [1, 1]] } } }), 'FORBIDDEN'); });
+    await test('owner saves arrows on a photo, removes them with null', async () => {
+      const it = (await call(O, 'list')).items.find(i => i.id === 'd3');
+      await rejects(call(O, 'saveArrows', { id: 'd3', arrows: { photo: 'nope', lines: { w: [[0, 0], [1, 1]] } } }), 'INVALID');
+      const r = await call(O, 'saveArrows', { id: 'd3', arrows: { photo: it.photos[1], lines: { h: [[0.1, 0.1], [0.1, 0.9]] } } });
+      eq([r.item.dimLines.photo === it.photos[1], Object.keys(r.item.dimLines.lines)], [true, ['h']]);
+      eq((await call(O, 'saveArrows', { id: 'd3', arrows: null })).item.dimLines, null);
+    });
+    await test('deleting the photo deletes its arrows; reordering keeps them', async () => {
+      const it = (await call(O, 'list')).items.find(i => i.id === 'd1');
+      const flipped = await call(O, 'saveItem', { item: { ...it, photos: [it.photos[1], it.photos[0], it.photos[2]] } });
+      ok(flipped.item.dimLines && flipped.item.dimLines.photo === it.photos[0], 'moved with its photo');
+      eq((await call(O, 'saveItem', { item: { ...it, photos: [it.photos[1]] } })).item.dimLines, null);
+    });
+    await test('arrows never appear in the export', async () => { ok(!JSON.stringify(buildExport(await call(O, 'export'))).includes('lines')); });
 
     group('Existing flows unchanged');
     Mock.reset();

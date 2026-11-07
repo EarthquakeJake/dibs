@@ -9,6 +9,7 @@
  *  • You get an email when someone claims, releases, or changes their pickup time.
  *  • Items with status "keep" are yours to keep: friends never receive them. The owner-only
  *    "export" action returns the inventory (no names, notes or photos) for storage planning.
+ *  • "dimLines" holds the dimension arrows drawn on one photo (positions only; the numbers come from "dimensions").
  *
  * After ANY change to this file: Deploy → Manage deployments → ✏️ → Version: "New version" → Deploy.
  * (The web-app URL stays the same.)
@@ -26,7 +27,7 @@ const SETTINGS = {
 
 const COLS = ['id', 'title', 'description', 'category', 'condition', 'dimensions', 'price', 'room', 'pickup',
   'photos', 'status', 'claimedBy', 'claimedAt', 'claimMessage', 'claimToken', 'created', 'updated', 'waitlist', 'pickupSlot',
-  'quantity', 'measured'];
+  'quantity', 'measured', 'dimLines'];
 const STATUSES = ['available', 'claimed', 'gone', 'keep'];
 const TEXT_FIELDS = { title: 120, description: 4000, category: 40, condition: 30, dimensions: 80, price: 30, room: 60, pickup: 300 };
 const MAX_PHOTOS = 10;
@@ -72,6 +73,7 @@ function handle_(req) {
     case 'uploadPhoto': return uploadPhoto_(req);
     case 'saveSlots': return saveSlots_(req);
     case 'export': return export_();
+    case 'saveArrows': return saveArrows_(req);
   }
   return fail_('Unknown action: ' + req.action, 'BAD_ACTION');
 }
@@ -270,6 +272,8 @@ function saveItem_(req) {
     Object.keys(TEXT_FIELDS).forEach(function (k) { it[k] = clip_(src[k], TEXT_FIELDS[k]); });
     it.photos = JSON.stringify(photos);
     it.updated = String(Date.now());
+    const arrows = parseArrows_(it.dimLines);
+    if (arrows && photos.indexOf(arrows.photo) < 0) it.dimLines = ''; // their photo was removed
     writeItem_(it);
     SpreadsheetApp.flush();
     removed = oldPhotos.filter(function (p) { return photos.indexOf(p) < 0; });
@@ -343,6 +347,47 @@ function saveSlots_(req) {
     lock.releaseLock();
   }
   return { ok: true, slots: out };
+}
+
+/** Owner-only: save (or with arrows = null, remove) the dimension arrows drawn on one of the item's photos. */
+function saveArrows_(req) {
+  let it;
+  const lock = lock_();
+  try {
+    it = findItem_(req.id);
+    if (!it) return fail_('This item no longer exists.', 'NOT_FOUND');
+    if (req.arrows == null) it.dimLines = '';
+    else {
+      const a = cleanArrows_(req.arrows, parsePhotos_(it.photos));
+      if (!a) return fail_('Those arrows don’t belong to a photo of this item.', 'INVALID');
+      it.dimLines = JSON.stringify(a);
+    }
+    it.updated = String(Date.now());
+    writeItem_(it);
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, item: view_(it, 'owner') };
+}
+
+// { photo: '<photo id>', lines: { w: [[x, y], [x, y]], d: …, h: … } } with x, y as fractions of the photo's width and height
+function cleanArrows_(a, photos) {
+  if (!a || typeof a !== 'object' || photos.indexOf(String(a.photo)) < 0) return null;
+  const lines = {};
+  ['w', 'd', 'h'].forEach(function (k) {
+    const L = a.lines && a.lines[k];
+    if (!Array.isArray(L) || L.length !== 2) return;
+    const pts = L.map(function (p) {
+      return Array.isArray(p) && p.length === 2 ? p.map(function (v) { const n = Number(v); return isFinite(n) ? Math.round(Math.min(1, Math.max(0, n)) * 1e4) / 1e4 : NaN; }) : null;
+    });
+    if (pts.every(function (p) { return p && !isNaN(p[0]) && !isNaN(p[1]); })) lines[k] = pts;
+  });
+  return Object.keys(lines).length ? { photo: String(a.photo), lines: lines } : null;
+}
+function parseArrows_(v) {
+  if (!v) return null;
+  try { const a = JSON.parse(v); return a && a.photo && a.lines ? a : null; } catch (e) { return null; }
 }
 
 /** Owner-only inventory export for storage planning. Deliberately leaves out names, notes, tokens, prices and photos. */
@@ -530,7 +575,7 @@ function view_(it, role) {
     condition: it.condition || '', dimensions: it.dimensions || '', price: it.price || '', room: it.room || '',
     pickup: it.pickup || '', photos: parsePhotos_(it.photos), status: status_(it), quantity: qty_(it.quantity),
     claimedBy: it.claimedBy || '', claimedAt: num_(it.claimedAt), created: num_(it.created), updated: num_(it.updated),
-    pickupSlot: it.pickupSlot || '',
+    pickupSlot: it.pickupSlot || '', dimLines: parseArrows_(it.dimLines),
     waitlist: parseQueue_(it.waitlist).map(function (e) {
       return owner ? { name: e.name, at: e.at, message: e.message || '', slot: e.slot || '' } : { name: e.name, at: e.at };
     }),
@@ -610,7 +655,7 @@ function notify_(subject, body) {
 /** Run once after pasting: creates the tabs + photo folder and asks for permissions. Safe to run again. */
 function setup() {
   sheet_();
-  header_(sheet_()); // adds any new columns (waitlist, pickupSlot, quantity, measured) to an existing sheet
+  header_(sheet_()); // adds any new columns (waitlist, pickupSlot, quantity, measured, dimLines) to an existing sheet
   slotSheet_();
   const folder = photoFolder_();
   const want = SETTINGS.SITE_NAME + ' photos';
