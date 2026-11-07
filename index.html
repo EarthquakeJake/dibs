@@ -233,7 +233,7 @@ dialog[open]{animation:pop .18s ease-out}
 .gallery{background:#07090E;display:flex;flex-direction:column;min-width:0;align-self:start}
 @media (min-width:761px){.gallery{align-self:stretch}.gmain{aspect-ratio:auto;flex:1;min-height:420px}}
 .gmain{position:relative;aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden;touch-action:pan-y;user-select:none}
-.gmain img{width:100%;height:100%;object-fit:contain;display:block}
+.gmain img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .gmain .noimg{color:#5B6578}
 .gmain img{cursor:zoom-in}
 /* dimension arrows */
@@ -1050,10 +1050,12 @@ function goPhoto(i) {
   bindGallery();
   $('.gthumb.on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
+let galleryRO = null; // redraws the arrows when the photo box changes size (sheet opening, rotation)
 function bindGallery() {
   const g = $('#gmain'); if (!g) return;
   const gi = $('img', g);
   if (gi) { gi.addEventListener('load', galleryArrows); if (gi.complete) galleryArrows(); }
+  if (window.ResizeObserver) { galleryRO?.disconnect(); galleryRO = new ResizeObserver(() => galleryArrows()); galleryRO.observe(g); }
   upgradeImg(gi);
   const cur = byId(S.openId);
   if (cur && cur.photos.length > 1) { const n = cur.photos.length; warm(cur.photos[(S.gIdx + 1) % n]); warm(cur.photos[(S.gIdx - 1 + n) % n]); }
@@ -1090,6 +1092,14 @@ const dimVals = raw => { const p = parseDims(raw); return { w: p.w, d: p.d, h: p
 function containBox(cw, ch, nw, nh, noUpscale) {
   let k = Math.min(cw / nw, ch / nh); if (noUpscale) k = Math.min(1, k);
   const w = nw * k, h = nh * k; return { x: (cw - w) / 2, y: (ch - h) / 2, w, h };
+}
+// where the photo actually is on screen: the img's own layout box (whatever the browser made of the CSS),
+// then object-fit: contain inside it — so the arrows follow the photo even if Safari sizes the img differently
+function photoBox(img, fallback) {
+  const w = img.offsetWidth, h = img.offsetHeight;
+  if (!w || !h) return fallback();
+  const b = containBox(w, h, img.naturalWidth, img.naturalHeight);
+  return { x: img.offsetLeft + b.x, y: img.offsetTop + b.y, w: b.w, h: b.h };
 }
 const placeBox = (el, b) => Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
 const svgEl = (tag, attrs, parent) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.append(e); return e; };
@@ -1144,7 +1154,7 @@ function galleryArrows() {
   tog.setAttribute('aria-pressed', arrowsOn); tog.title = arrowsOn ? 'Hide dimensions' : 'Show dimensions';
   tog.innerHTML = icon('ruler') + 'Dimensions';
   if (!arrowsOn || !img.naturalWidth) { svg.replaceChildren(); return; }
-  const b = containBox(g.clientWidth, g.clientHeight, img.naturalWidth, img.naturalHeight);
+  const b = photoBox(img, () => containBox(g.clientWidth, g.clientHeight, img.naturalWidth, img.naturalHeight));
   placeBox(svg, b); drawArrows(svg, b, a.lines, dimVals(it.dimensions));
 }
 // the full-screen photo (the arrows take the same zoom and pan as the photo)
@@ -1155,7 +1165,7 @@ function lbArrows() {
   tog.hidden = !a;
   if (a) { tog.setAttribute('aria-pressed', arrowsOn); tog.innerHTML = icon('ruler') + 'Dimensions'; }
   if (!a || !arrowsOn || !img.naturalWidth) { svg.replaceChildren(); return; }
-  const f = containBox(st.clientWidth, st.clientHeight, img.naturalWidth, img.naturalHeight, true);
+  const f = photoBox(img, () => containBox(st.clientWidth, st.clientHeight, img.naturalWidth, img.naturalHeight, true));
   // the photo is scaled by LB.s around its centre and moved by LB.tx/ty — put the arrows where it is now
   const b = { x: f.x + f.w / 2 + LB.tx - f.w * LB.s / 2, y: f.y + f.h / 2 + LB.ty - f.h * LB.s / 2, w: f.w * LB.s, h: f.h * LB.s };
   placeBox(svg, b); drawArrows(svg, b, a.lines, dimVals(it.dimensions));
