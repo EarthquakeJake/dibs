@@ -319,6 +319,9 @@ dialog.lb .lbhint{position:absolute;right:12px;bottom:calc(14px + env(safe-area-
 .dimrow label b{position:absolute;left:11px;top:50%;transform:translateY(-50%);font:500 12px 'Geist Mono',ui-monospace,monospace;color:var(--muted);pointer-events:none}
 .dimrow .input{padding-left:30px}
 .dimrow select.input{padding-left:10px}
+/* phones: iOS zooms in on any field under 16px and doesn't zoom back out, so fields are 16px on touch screens */
+@media (pointer:coarse){input,select,textarea,.input,.gate-card .input{font-size:16px}}
+@media (max-width:440px){.dimrow{grid-template-columns:repeat(3,minmax(0,1fr)) 68px;gap:6px}.dimrow label b{left:9px}.dimrow .input{padding:0 6px 0 24px}.dimrow select.input{padding:0 4px 0 8px}}
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .pthumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line)}
 .pthumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1171,6 +1174,14 @@ function lbArrows() {
   placeBox(svg, b); drawArrows(svg, b, a.lines, dimVals(it.dimensions));
 }
 window.addEventListener('resize', () => { galleryArrows(); lbArrows(); if ($('#arrowDlg').open) aRender(); });
+// safety net: if the phone is still zoomed in after typing in a field, snap back to normal size
+// (briefly capping the zoom resets it on iOS; pinch-zoom still works afterwards)
+document.addEventListener('focusout', () => setTimeout(() => {
+  const vv = window.visualViewport, a = document.activeElement;
+  if (!vv || vv.scale <= 1.01 || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))) return;
+  const m = document.querySelector('meta[name=viewport]'), was = m.content;
+  m.content = was + ',maximum-scale=1'; setTimeout(() => { m.content = was; }, 300);
+}, 150));
 
 // ----- the owner's arrow editor -----
 const AE = { id: null, ref: '', nat: { w: 4, h: 3 }, lines: {}, vals: {}, drag: null, dirty: false, existing: false, loaded: false };
