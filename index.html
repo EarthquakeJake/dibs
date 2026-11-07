@@ -166,6 +166,16 @@ body:has(#ownerBar:not([hidden])) .brand .pill-owner{display:inline-flex}
 .t-new::before{background:var(--neon);box-shadow:0 0 6px var(--neon)}
 .pcount{position:absolute;right:10px;bottom:10px;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 7px;border-radius:6px;font:500 11.5px 'Geist Mono',ui-monospace,monospace;background:rgba(11,15,23,.7);color:#fff}
 .pcount svg{width:13px;height:13px}
+/* condition */
+.cond{--c:var(--muted);display:inline-flex;align-items:center;gap:6px;color:var(--c);font-weight:500;white-space:nowrap}
+.cl5,.cl4{--c:var(--accent)}.cl3{--c:#8FD3F0}.cl2{--c:var(--claimed)}.cl1{--c:#F2895E}
+.ph .cond{position:absolute;left:10px;bottom:10px;max-width:calc(100% - 64px);height:22px;padding:0 8px 0 7px;border-radius:6px;font-size:11.5px;background:rgba(11,15,23,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow:hidden;text-overflow:ellipsis}
+.ph .cond::before{content:'';flex:none;width:6px;height:6px;border-radius:50%;background:currentColor}
+.card.is-gone .ph .cond{display:none}
+.facts .cond{font-size:14px;color:var(--text);gap:9px}
+.pips{display:inline-flex;gap:3px}
+.pips i{width:14px;height:6px;border-radius:2px;background:var(--line-2)}
+.pips i.on{background:var(--c)}
 .cbody{display:flex;flex-direction:column;gap:6px;padding:12px 14px 14px}
 .ctitle{font-size:15px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cmeta{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 10px}
@@ -928,11 +938,19 @@ function visibleItems() {
     if (S.filter === 'mine' && !isMine(it) && !inLine(it)) return false;
     if (S.filter === 'keep' && it.status !== 'keep') return false;
     if (S.cat !== 'all' && (it.category || 'Other') !== S.cat) return false;
-    if (q && !`${it.title} ${it.description} ${it.category} ${it.room} ${it.claimedBy}`.toLowerCase().includes(q)) return false;
+    if (q && !`${it.title} ${it.description} ${it.category} ${it.condition} ${it.room} ${it.claimedBy}`.toLowerCase().includes(q)) return false;
     return true;
   }).sort((a, b) => (rank[a.status] - rank[b.status]) || cmp(a, b));
 }
 
+// condition: colour-coded on the card photo, with a 5-step meter in the item view (unknown wording: neutral, no meter)
+const condLevel = c => { const i = CONDITIONS.indexOf(String(c || '').trim()); return i < 0 ? 0 : CONDITIONS.length - i; };
+function condChip(c, meter) {
+  c = String(c || '').trim(); if (!c) return '';
+  const l = condLevel(c);
+  const pips = meter && l ? `<span class="pips" aria-hidden="true">${[1, 2, 3, 4, 5].map(k => `<i${k <= l ? ' class="on"' : ''}></i>`).join('')}</span>` : '';
+  return `<span class="cond cl${l}"${meter ? '' : ` title="Condition: ${esc(c)}"`}>${pips}${meter ? '' : '<span class="sr">Condition: </span>'}${esc(c)}</span>`;
+}
 function cardHTML(it, idx = 99) {
   const m = isMine(it);
   let tag = '';
@@ -944,7 +962,7 @@ function cardHTML(it, idx = 99) {
   else if (isNew(it)) tag = '<span class="tag t-new">New</span>';
   const pl = priceLabel(it.price);
   return `<button class="card is-${it.status}" data-open="${esc(it.id)}" aria-label="${esc(it.title)}">
-    <span class="ph">${imgTag(it.photos[0], 640, it.title, { sizes: '(max-width:560px) 50vw, 300px', eager: idx < 4 })}${tag}${it.photos.length > 1 ? `<span class="pcount">${icon('camera')}${it.photos.length}</span>` : ''}</span>
+    <span class="ph">${imgTag(it.photos[0], 640, it.title, { sizes: '(max-width:560px) 50vw, 300px', eager: idx < 4 })}${tag}${condChip(it.condition)}${it.photos.length > 1 ? `<span class="pcount">${icon('camera')}${it.photos.length}</span>` : ''}</span>
     <span class="cbody"><span class="ctitle">${esc(it.title)}${it.quantity > 1 ? ` <span class="qty mono">× ${it.quantity}</span>` : ''}</span>
       <span class="cmeta"><span class="price${pl === 'Free' ? ' free' : ''}">${esc(pl)}</span>${it.dimensions ? `<span class="dims mono">${esc(shortDims(it.dimensions))}</span>` : ''}</span>
     </span></button>`;
@@ -1001,6 +1019,7 @@ function renderDetail() {
   S.openSig = sigOf(it);
   const pl = priceLabel(it.price);
   const facts = [
+    it.condition && ['Condition', condChip(it.condition, true)],
     it.quantity > 1 && ['Quantity', `<span class="mono">${it.quantity}</span>`],
     it.dimensions && ['Dimensions', `<span class="mono">${esc(it.dimensions)}</span>`],
     it.pickup && ['Pickup', esc(it.pickup)],
@@ -1012,7 +1031,7 @@ function renderDetail() {
       <button class="x float" data-close="detailDlg" aria-label="Close">${icon('x')}</button>
       <div class="gallery" id="gallery">${galleryHTML(it)}</div>
       <div class="info">
-        <div class="badges">${[it.category, it.condition].filter(Boolean).map(b => `<span class="badge">${esc(b)}</span>`).join('')}</div>
+        <div class="badges">${[it.category].filter(Boolean).map(b => `<span class="badge">${esc(b)}</span>`).join('')}</div>
         <h2>${esc(it.title)}</h2>
         ${it.status === 'keep' ? '' : `<div class="pricebig${pl === 'Free' ? ' free' : ''}">${esc(pl)}</div>`}
         ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : ''}
