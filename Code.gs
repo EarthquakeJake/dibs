@@ -19,6 +19,7 @@
 const SETTINGS = {
   FRIEND_CODE: 'change-me',       // code for friends & family (goes inside the invite link) — make it long
   OWNER_CODE: 'change-me-too',    // YOUR private code: add/edit items, see claim notes — make it long and different
+  STORAGE_CODE: 'change-me-three', // read-only code for the storage-planning app: it can ONLY export the inventory (blank = off)
   NOTIFY_EMAIL: '',               // where claim emails go — leave blank for this Google account
   SITE_URL: '',                   // your GitHub Pages address, e.g. https://yourname.github.io/dibs/
   SITE_NAME: 'MOVE',
@@ -56,6 +57,10 @@ function handle_(req) {
   if (!role) {
     Utilities.sleep(700); // slows down guessing
     return fail_('That access code is not right.', 'AUTH');
+  }
+  if (role === 'storage') { // read-only: never reaches list, claim or any owner action
+    if (req.action === 'export') return export_();
+    return fail_('This code can only export the inventory.', 'FORBIDDEN');
   }
   switch (req.action) {
     case 'list': return list_(req, role);
@@ -400,10 +405,34 @@ function export_() {
         id: it.id, title: it.title || '', category: it.category || '', room: it.room || '',
         status: status, disposition: status === 'keep' ? 'store' : 'give',
         quantity: qty_(it.quantity), measured: measured_(it.measured),
-        dimensionsRaw: it.dimensions || '', updated: num_(it.updated),
+        dimensions: dimsCm_(it.dimensions || ''), dimensionsRaw: it.dimensions || '', updated: num_(it.updated),
       };
     }),
   };
+}
+
+// Same parsing as the page's parseDims/toCm/dimsCm: { w, d, h, unit: 'cm' } when width, depth and height
+// are all known (mm/cm/m/in converted to cm, rounded to 0.1), otherwise null.
+const UNIT_TO_CM_ = { mm: 0.1, cm: 1, m: 100, in: 2.54 };
+function parseDims_(s) {
+  s = String(s || '');
+  const g = function (k) { return (s.match(new RegExp('\\b' + k + '\\s*([\\d.,]+)', 'i')) || [])[1] || ''; };
+  const unit = (s.match(/\b(mm|cm|m|in)\b/i) || [])[1] || 'cm';
+  const out = { w: g('W'), d: g('D'), h: g('H'), unit: unit.toLowerCase() };
+  out.parsed = !s.trim() || !!(out.w || out.d || out.h);
+  return out;
+}
+function toCm_(v, unit) {
+  const n = parseFloat(String(v == null ? '' : v).replace(',', '.'));
+  if (!isFinite(n) || n <= 0 || !(unit in UNIT_TO_CM_)) return null;
+  return Math.round(n * UNIT_TO_CM_[unit] * 10) / 10;
+}
+function dimsCm_(raw) {
+  if (!String(raw || '').trim()) return null;
+  const p = parseDims_(raw);
+  if (!p.parsed) return null;
+  const w = toCm_(p.w, p.unit), d = toCm_(p.d, p.unit), h = toCm_(p.h, p.unit);
+  return w != null && d != null && h != null ? { w: w, d: d, h: h, unit: 'cm' } : null;
 }
 
 function uploadPhoto_(req) {
@@ -592,6 +621,7 @@ function roleFor_(key) {
   if (!key) return null;
   if (key === String(SETTINGS.OWNER_CODE)) return 'owner';
   if (key === String(SETTINGS.FRIEND_CODE)) return 'friend';
+  if (String(SETTINGS.STORAGE_CODE || '').trim() && key === String(SETTINGS.STORAGE_CODE).trim()) return 'storage';
   return null;
 }
 /** One request at a time touches the sheet. Waits up to 20 s, then asks the visitor to retry. */

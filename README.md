@@ -19,6 +19,8 @@ GitHub Pages only serves files, so the Sheet does the remembering. Nothing perso
 2. **Backend.** Replace everything in the editor with `Code.gs` from this repo. In `SETTINGS`:
    - `FRIEND_CODE` — for friends (it goes inside the invite link). Make it long, e.g. three random words and a number.
    - `OWNER_CODE` — yours, for adding and editing. Long and different.
+   - `STORAGE_CODE` — optional, read-only, for a storage-planning app. It can **only** call `export`; every other action is refused, so it never sees the item list, claims, names or notes. Leave it blank to switch it off.
+   - **Never put the real codes in this public repo.** They live only in your Apps Script; the `Code.gs` here keeps the `change-me` placeholders.
    - `SITE_URL` — your GitHub Pages address (used in the emails).
 3. **Permissions.** Pick **`setup`** in the function list and **Run**. Allow access (on "Google hasn't verified this app": **Advanced → Go to … → Allow**). It creates the `Items`, `Slots` and `Log` tabs and the photo folder.
 4. **Publish.** **Deploy → New deployment → Web app**, *Execute as: Me*, *Who has access: Anyone*. Copy the web-app URL (ends in `/exec`).
@@ -42,6 +44,8 @@ GitHub Pages only serves files, so the Sheet does the remembering. Nothing perso
 **Export** (owner only) downloads `move-inventory-YYYY-MM-DD.json` with every item, including kept and gone ones. Each item has its id, title, category, room, status, disposition (`store` for kept items, otherwise `give`), quantity, whether it was measured, and dimensions converted to centimetres (`null` if width, depth or height is missing; the original text is in `dimensionsRaw`).
 
 The export deliberately leaves out names, claim notes, prices, photos and tokens. The format (`"format": "move-inventory", "version": 1`) is a contract with the storage planner: change it only by agreement, and bump `version` for additions.
+
+A storage-planning app can pull the same export directly with `STORAGE_CODE` (`POST {"action":"export","key":"…"}` to the web-app URL). That reply also carries `dimensions` in cm, worked out on the server the same way as the page does.
 
 ## Testing
 
