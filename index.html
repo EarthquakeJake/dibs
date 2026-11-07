@@ -382,6 +382,9 @@ dialog.lb .lbhint{position:absolute;right:12px;bottom:calc(14px + env(safe-area-
 .joinq{display:flex;gap:8px;flex-wrap:wrap}
 .joinq .input{flex:1 1 160px;background:var(--surface)}
 .joinq .btn{flex:none;height:40px}
+.anonchk{margin:2px 0 4px}
+.joinq + .anonchk{margin-top:10px}
+.anonmark{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid var(--line-2);color:var(--muted);font-size:11.5px;font-weight:500;vertical-align:1px;white-space:nowrap}
 .t-queue{color:var(--neon-soft)}
 .hint b{color:var(--text);font-weight:500}
 .queue{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;font-size:14px}
@@ -596,14 +599,15 @@ const Mock = (() => {
   const save = items => { if (!LS.set('demo.items4', items)) throw apiErr('Demo storage is full — remove some photos or reset the demo.', 'QUOTA'); };
   const loadSlots = () => LS.get('demo.slots', null) || seedSlots();
   const view = (it, role) => {
-    const v = { ...it, waitlist: (it.waitlist || []).map(e => role === 'owner' ? { name: e.name, at: e.at, message: e.message, slot: e.slot } : { name: e.name, at: e.at }) };
-    delete v.claimToken; if (role !== 'owner') { delete v.claimMessage; delete v.measured; } return v;
+    const owner = role === 'owner', anon = !!it.claimedBy && it.anon === true;
+    const v = { ...it, anon, claimedBy: owner || !anon ? it.claimedBy : '', waitlist: (it.waitlist || []).map(e => owner ? { name: e.name, at: e.at, message: e.message, slot: e.slot, anon: e.anon === true } : { name: e.anon ? '' : e.name, at: e.at, anon: e.anon === true }) };
+    delete v.claimToken; if (!owner) { delete v.claimMessage; delete v.measured; } return v;
   };
   const cleanSlot = (s, slots) => s === 'other' ? 'other' : slots.some(x => x.id === s) ? s : '';
   const handOn = (it, now) => {
     const next = (it.waitlist = it.waitlist || []).shift();
-    if (!next) { Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', pickupSlot: '' }); return ''; }
-    Object.assign(it, { status: 'claimed', claimedBy: next.name, claimedAt: now, claimMessage: next.message || '', claimToken: next.token, pickupSlot: next.slot || '' });
+    if (!next) { Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', pickupSlot: '', anon: false }); return ''; }
+    Object.assign(it, { status: 'claimed', claimedBy: next.name, claimedAt: now, claimMessage: next.message || '', claimToken: next.token, pickupSlot: next.slot || '', anon: next.anon === true });
     return next.name;
   };
   async function handle(req) {
@@ -627,9 +631,9 @@ const Mock = (() => {
       case 'claim': {
         const name = person();
         const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
-        if (it.status === 'claimed') throw apiErr(`Too late — ${it.claimedBy} already claimed this. You can join the waitlist.`, 'TAKEN', { item: view(it, role) });
+        if (it.status === 'claimed') throw apiErr(`Too late — ${view(it, role).claimedBy || 'someone'} already claimed this. You can join the waitlist.`, 'TAKEN', { item: view(it, role) });
         if (it.status !== 'available') throw apiErr('This item is no longer available.', 'UNAVAILABLE', { item: view(it, role) });
-        Object.assign(it, { status: 'claimed', claimedBy: name, claimedAt: now, claimMessage: String(req.message || '').trim().slice(0, 500), claimToken: uid(), pickupSlot: cleanSlot(req.slot, slots), waitlist: [], updated: now });
+        Object.assign(it, { status: 'claimed', claimedBy: name, claimedAt: now, claimMessage: String(req.message || '').trim().slice(0, 500), claimToken: uid(), pickupSlot: cleanSlot(req.slot, slots), waitlist: [], anon: req.anon === true, updated: now });
         save(items); return { ok: true, token: it.claimToken, item: view(it, role) };
       }
       case 'queue': {
@@ -637,7 +641,7 @@ const Mock = (() => {
         const it = find(req.id); if (!it) throw apiErr('This item no longer exists.', 'NOT_FOUND');
         if (it.status === 'available') throw apiErr('Good news — this is available again. You can claim it now.', 'AVAILABLE', { item: view(it, role) });
         if (it.status !== 'claimed') throw apiErr('This item is no longer available.', 'UNAVAILABLE', { item: view(it, role) });
-        const e = { name, message: String(req.message || '').trim().slice(0, 500), slot: cleanSlot(req.slot, slots), token: uid(), at: now };
+        const e = { name, message: String(req.message || '').trim().slice(0, 500), slot: cleanSlot(req.slot, slots), token: uid(), at: now, anon: req.anon === true };
         (it.waitlist = it.waitlist || []).push(e); it.updated = now;
         save(items); return { ok: true, token: e.token, position: it.waitlist.length, item: view(it, role) };
       }
@@ -694,7 +698,7 @@ const Mock = (() => {
           it.status = 'keep'; it.waitlist = [];
         } else if (req.status === 'available') {
           if (it.status === 'claimed') handOn(it, now);
-          else Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', pickupSlot: '', waitlist: [] });
+          else Object.assign(it, { status: 'available', claimedBy: '', claimedAt: 0, claimMessage: '', claimToken: '', pickupSlot: '', waitlist: [], anon: false });
         } else { it.status = 'gone'; it.waitlist = []; }
         it.updated = now; save(items); return { ok: true, item: view(it, 'owner') };
       }
@@ -801,7 +805,13 @@ function slotLabel(s) {
   return `${fmtDay(s.start)} · ${fmtTime(s.start)}–${same ? fmtTime(s.end) : fmtDay(s.end) + ' ' + fmtTime(s.end)}`;
 }
 const upcomingSlots = () => S.slots.filter(s => s.end > Date.now());
-const slotBooked = id => new Set(S.items.filter(i => i.status === 'claimed' && i.pickupSlot === id).map(i => i.claimedBy.trim().toLowerCase())).size;
+const slotBooked = id => new Set(S.items.filter(i => i.status === 'claimed' && i.pickupSlot === id).map(i => i.claimedBy ? i.claimedBy.trim().toLowerCase() : '#' + i.id)).size;
+// names people chose to hide: friends get none from the server; the owner sees the name plus a marker
+const hiddenMark = x => S.role === 'owner' && x.anon ? ' <span class="anonmark" title="Hidden from everyone but you">hidden from others</span>' : '';
+const nameHTML = it => it.claimedBy ? `by <b>${esc(it.claimedBy)}</b>${hiddenMark(it)}` : 'anonymously';
+let anonPref = LS.get('anon', false) === true;
+const anonCheck = () => `<label class="check anonchk"><input type="checkbox" id="canon"${S.role !== 'owner' && anonPref ? ' checked' : ''}>
+  <span>${S.role === 'owner' ? 'Hide this name from friends' : 'Hide my name from other people'}<small>${S.role === 'owner' ? 'Only you will see it.' : `Only ${ownerName()} will see it.`}</small></span></label>`;
 const pickupText = id => id === 'other' ? 'Arranging another time' : slotLabel(slotById(id));
 function normSlots(a) {
   return (Array.isArray(a) ? a : []).map(s => ({ id: String(s.id || ''), start: +s.start || 0, end: +s.end || 0 }))
@@ -814,12 +824,12 @@ function normalise(it) {
     id: String(it.id), title: String(it.title || 'Untitled'), description: String(it.description || ''), category: String(it.category || ''),
     condition: String(it.condition || ''), dimensions: String(it.dimensions || ''), price: String(it.price ?? ''), room: String(it.room || ''),
     pickup: String(it.pickup || ''), photos: Array.isArray(it.photos) ? it.photos.filter(Boolean).map(String) : [],
-    status: STATUSES.includes(it.status) ? it.status : 'available', claimedBy: String(it.claimedBy || ''),
+    status: STATUSES.includes(it.status) ? it.status : 'available', claimedBy: String(it.claimedBy || ''), anon: it.anon === true,
     quantity: Math.min(999, Math.max(1, Math.floor(+it.quantity) || 1)), measured: it.measured === true,
     dimLines: cleanArrows(it.dimLines, Array.isArray(it.photos) ? it.photos.map(String) : []),
     claimedAt: +it.claimedAt || 0, claimMessage: String(it.claimMessage || ''), created: +it.created || 0, updated: +it.updated || 0,
     pickupSlot: String(it.pickupSlot || ''),
-    waitlist: Array.isArray(it.waitlist) ? it.waitlist.filter(e => e && e.name).map(e => ({ name: String(e.name), at: +e.at || 0, message: String(e.message || ''), slot: String(e.slot || '') })) : [],
+    waitlist: Array.isArray(it.waitlist) ? it.waitlist.filter(e => e && (e.name || e.anon)).map(e => ({ name: String(e.name || ''), at: +e.at || 0, message: String(e.message || ''), slot: String(e.slot || ''), anon: e.anon === true })) : [],
   };
 }
 function upsert(raw) {
@@ -956,7 +966,7 @@ function cardHTML(it, idx = 99) {
   let tag = '';
   if (it.status === 'claimed') tag = m ? '<span class="tag t-mine">Yours</span>'
     : inLine(it) ? `<span class="tag t-queue">In line${qPos(it) ? ' · #' + qPos(it) : ''}</span>`
-    : `<span class="tag t-claimed">Claimed · ${esc(it.claimedBy)}</span>`;
+    : `<span class="tag t-claimed">${it.claimedBy ? `Claimed · ${esc(it.claimedBy)}` : 'Claimed'}</span>`;
   else if (it.status === 'gone') tag = '<span class="tag t-gone">Gone</span>';
   else if (it.status === 'keep') tag = '<span class="tag t-keep">Keeping</span>';
   else if (isNew(it)) tag = '<span class="tag t-new">New</span>';
@@ -1002,8 +1012,8 @@ function renderFoot() {
 }
 
 /* ---------- detail ---------- */
-const sigOf = it => it ? [it.status, it.quantity, it.claimedBy, it.claimMessage, it.updated, mine[it.id] || '', queued[it.id] || '', S.qpos[it.id] || '',
-  it.pickupSlot, it.waitlist.map(w => w.name).join(','), S.slots.map(s => s.id + s.start + s.end).join(), JSON.stringify(it.dimLines)].join('|') : '';
+const sigOf = it => it ? [it.status, it.quantity, it.claimedBy, it.anon, it.claimMessage, it.updated, mine[it.id] || '', queued[it.id] || '', S.qpos[it.id] || '',
+  it.pickupSlot, it.waitlist.map(w => w.name + (w.anon ? '*' : '')).join(','), S.slots.map(s => s.id + s.start + s.end).join(), JSON.stringify(it.dimLines)].join('|') : '';
 
 function openDetail(id) {
   const it = byId(id); if (!it) return;
@@ -1434,6 +1444,7 @@ function claimHTML(it) {
       ${slotPicker(lastSlot())}
       <label class="field"><span>Note for ${ownerName()} (optional)</span>
         <textarea class="input" id="cmsg" maxlength="500" rows="2" placeholder="${upcomingSlots().length ? 'Anything to add?' : 'When could you pick it up?'}"></textarea></label>
+      ${anonCheck()}
       <button class="btn primary big" data-act="claim" data-id="${id}">Claim it</button>
       <p class="small">First come, first served. ${ownerName(true)} gets an email straight away.</p>
     </div>`;
@@ -1444,7 +1455,8 @@ function claimHTML(it) {
       <h3>${icon('check')}It’s yours!</h3>
       <p>You claimed this ${esc(timeAgo(it.claimedAt))}. ${ownerName(true)} has been notified${upcomingSlots().length || slotById(it.pickupSlot) ? '.' : ' and will be in touch about pickup.'}</p>
       ${pickupControl(it)}
-      ${q ? `<p class="small">${q === 1 ? '1 person is' : q + ' people are'} waiting. If you change your mind, it passes to ${esc(it.waitlist[0].name)}.</p>` : ''}
+      ${it.anon ? '<p class="small">Your name is hidden from other people.</p>' : ''}
+      ${q ? `<p class="small">${q === 1 ? '1 person is' : q + ' people are'} waiting. If you change your mind, it passes to ${it.waitlist[0].name ? esc(it.waitlist[0].name) : 'the next person in line'}.</p>` : ''}
       <div class="btnrow"><button class="btn" data-act="release" data-id="${id}">${icon('undo')}Changed my mind</button></div>
     </div>`;
     if (nameMatch(it)) return `<div class="claimbox mine">
@@ -1455,25 +1467,26 @@ function claimHTML(it) {
       const p = qPos(it);
       return `<div class="claimbox queued">
         <h3>${icon('users')}${p ? `You’re #${p} in line` : 'You’re on the waitlist'}</h3>
-        <p>Claimed by <b>${esc(it.claimedBy)}</b>. If it comes to you, it becomes yours automatically and shows up under <b>My claims</b>.</p>
+        <p>Claimed ${nameHTML(it)}. If it comes to you, it becomes yours automatically and shows up under <b>My claims</b>.</p>
         <div class="btnrow"><button class="btn" data-act="leave-queue" data-id="${id}">Leave the waitlist</button></div>
       </div>`;
     }
     return `<div class="claimbox claimed">
       <h3>${icon('star')}Claimed</h3>
-      <p>Claimed by <b>${esc(it.claimedBy)}</b> ${esc(timeAgo(it.claimedAt))}.${q ? ` ${q === 1 ? '1 person' : q + ' people'} in line.` : ''}</p>
-      <p class="small">Join the waitlist. If ${esc(it.claimedBy)} changes their mind, it passes to the next person automatically.</p>
+      <p>Claimed ${nameHTML(it)} ${esc(timeAgo(it.claimedAt))}.${q ? ` ${q === 1 ? '1 person' : q + ' people'} in line.` : ''}</p>
+      <p class="small">Join the waitlist. If ${it.claimedBy ? esc(it.claimedBy) + ' changes their' : 'they change their'} mind, it passes to the next person automatically.</p>
       <div class="joinq">
         <label class="sr" for="cname">${owner ? 'Name' : 'Your name'}</label>
         <input class="input" id="cname" maxlength="60" autocomplete="given-name" value="${owner ? '' : esc(myName)}" placeholder="${owner ? 'Name' : 'Your name'}">
         <button class="btn" data-act="queue" data-id="${id}">${icon('users')}Join the waitlist</button>
       </div>
+      ${anonCheck()}
     </div>`;
   }
   if (it.status === 'keep') return `<div class="claimbox keep"><h3>${icon('keep')}You’re keeping this</h3>
     <p>Friends can’t see it. It’s still part of your inventory export, marked for storage.</p></div>`;
   return `<div class="claimbox gone"><h3>${icon('box')}Found a new home</h3>
-    <p>${it.claimedBy ? `Went to <b>${esc(it.claimedBy)}</b>.` : 'This one is gone.'}</p></div>`;
+    <p>${it.claimedBy ? `Went to <b>${esc(it.claimedBy)}</b>${hiddenMark(it)}.` : 'This one is gone.'}</p></div>`;
 }
 
 function ownerToolsHTML(it) {
@@ -1498,7 +1511,7 @@ function ownerToolsHTML(it) {
   const pk = it.status === 'claimed' && (S.slots.length || it.pickupSlot)
     ? `<div class="hint">Pickup: <b>${esc(pickupText(it.pickupSlot) || 'no time chosen yet')}</b></div>` : '';
   const wl = it.status === 'claimed' && it.waitlist.length ? `<div><div class="hint">Waitlist</div><ol class="queue">${it.waitlist.map((w, i) => `
-      <li><span class="pos mono">${i + 1}</span><span><b>${esc(w.name)}</b>${w.message ? ` <span class="hint">· ${esc(w.message)}</span>` : ''}</span>
+      <li><span class="pos mono">${i + 1}</span><span><b>${esc(w.name)}</b>${hiddenMark(w)}${w.message ? ` <span class="hint">· ${esc(w.message)}</span>` : ''}</span>
         <button class="x" data-act="q-remove" data-id="${id}" data-i="${i}" aria-label="Remove ${esc(w.name)} from the waitlist">${icon('x')}</button></li>`).join('')}</ol></div>` : '';
   return `<div class="owner-tools">
     <div class="lbl"><span class="pill-owner">Owner</span>Only you see this</div>
@@ -1516,7 +1529,9 @@ async function doClaim(btn) {
   btn.disabled = true; btn.textContent = 'Claiming…';
   try {
     const slot = $('input[name=cslot]:checked')?.value || '';
-    const r = await api('claim', { id, name, message: msgEl.value.trim(), slot });
+    const anon = $('#canon')?.checked === true;
+    const r = await api('claim', { id, name, message: msgEl.value.trim(), slot, anon });
+    if (S.role !== 'owner') { anonPref = anon; LS.set('anon', anon); }
     if (slot) LS.set('slot', slot);
     if (S.role !== 'owner') { myName = name; LS.set('name', name); }
     mine[id] = r.token; LS.set('mine', mine);
@@ -1537,7 +1552,9 @@ async function doQueue(btn) {
   if (!name) { nameEl.focus(); nameEl.setAttribute('aria-invalid', 'true'); toast('Add your name to join the waitlist.', 'err'); return; }
   const prev = btn.innerHTML; btn.disabled = true; btn.textContent = 'Joining…';
   try {
-    const r = await api('queue', { id, name });
+    const anon = $('#canon')?.checked === true;
+    const r = await api('queue', { id, name, anon });
+    if (S.role !== 'owner') { anonPref = anon; LS.set('anon', anon); }
     if (S.role !== 'owner') { myName = name; LS.set('name', name); queued[id] = r.token; LS.set('queued', queued); S.qpos[id] = r.position; }
     upsert(r.item);
     toast(S.role === 'owner' ? `Added ${name} to the waitlist.` : `You’re #${r.position} in line.`, 'ok');
@@ -1687,7 +1704,7 @@ document.addEventListener('click', async e => {
         next ? `Release your claim? It will pass to ${next.name}, who’s next in line.` : 'Release your claim on this item?');
       if (r) {
         delete mine[id]; LS.set('mine', mine);
-        toast(r.item && r.item.status === 'claimed' ? `Released — it’s passed to ${r.item.claimedBy}.` : 'Released — it’s available again.', 'ok');
+        toast(r.item && r.item.status === 'claimed' ? `Released — it’s passed to ${r.item.claimedBy || 'the next person in line'}.` : 'Released — it’s available again.', 'ok');
         renderAll();
       }
       return;

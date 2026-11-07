@@ -17,18 +17,18 @@
 
 // ===================== 1. YOUR SETTINGS =====================
 const SETTINGS = {
-  FRIEND_CODE: 'change-me',       // code for friends & family (goes inside the invite link) — make it long
-  OWNER_CODE: 'change-me-too',    // YOUR private code: add/edit items, see claim notes — make it long and different
-  STORAGE_CODE: 'change-me-three', // read-only code for the storage-planning app: it can ONLY export the inventory (blank = off)
+  FRIEND_CODE: 'change-me', // code for friends & family (goes inside the invite link)
+  OWNER_CODE: 'change-me-too', // YOUR private code: add/edit items, see claim notes
+  STORAGE_CODE: 'change-me-three', // read-only code for the storage-planning app: it can ONLY export the inventory
   NOTIFY_EMAIL: '',               // where claim emails go — leave blank for this Google account
-  SITE_URL: '',                   // your GitHub Pages address, e.g. https://yourname.github.io/dibs/
+  SITE_URL: 'https://yourname.github.io/dibs/', // your GitHub Pages address
   SITE_NAME: 'MOVE',
 };
 // ============ nothing below this line needs changing ============
 
 const COLS = ['id', 'title', 'description', 'category', 'condition', 'dimensions', 'price', 'room', 'pickup',
   'photos', 'status', 'claimedBy', 'claimedAt', 'claimMessage', 'claimToken', 'created', 'updated', 'waitlist', 'pickupSlot',
-  'quantity', 'measured', 'dimLines'];
+  'quantity', 'measured', 'dimLines', 'claimAnon'];
 const STATUSES = ['available', 'claimed', 'gone', 'keep'];
 const TEXT_FIELDS = { title: 120, description: 4000, category: 40, condition: 30, dimensions: 80, price: 30, room: 60, pickup: 300 };
 const MAX_PHOTOS = 10;
@@ -100,6 +100,7 @@ function list_(req, role) {
 function claim_(req, role) {
   const name = clip_(req.name, 60).replace(/\s+/g, ' ');
   const message = clip_(req.message, 500);
+  const anon = req.anon === true;
   if (!name) return fail_('Please enter your name.', 'INVALID');
   const slots = readSlots_();
   let it;
@@ -109,7 +110,7 @@ function claim_(req, role) {
     it = findItem_(req.id);
     if (!it || hidden_(it, role)) return fail_('This item no longer exists.', 'NOT_FOUND');
     if (it.status === 'claimed') {
-      return fail_('Too late — ' + it.claimedBy + ' already claimed this. You can join the waitlist.', 'TAKEN', { item: view_(it, role) });
+      return fail_('Too late — ' + (shownName_(it, role) || 'someone') + ' already claimed this. You can join the waitlist.', 'TAKEN', { item: view_(it, role) });
     }
     if (it.status && it.status !== 'available') {
       return fail_('This item is no longer available.', 'UNAVAILABLE', { item: view_(it, role) });
@@ -119,6 +120,7 @@ function claim_(req, role) {
     it.claimedAt = String(Date.now());
     it.claimMessage = message;
     it.claimToken = Utilities.getUuid();
+    it.claimAnon = anon ? '1' : '';
     it.pickupSlot = cleanSlot_(req.slot, slots);
     it.waitlist = '[]';
     it.updated = String(Date.now());
@@ -131,7 +133,7 @@ function claim_(req, role) {
   const when = pickupLabel_(it.pickupSlot, slots);
   notify_(
     name + ' claimed "' + it.title + '"',
-    name + ' claimed "' + it.title + '".\n\n' +
+    name + ' claimed "' + it.title + '".' + (anon ? ' (Their name is hidden from other people.)' : '') + '\n\n' +
     (when ? 'Pickup: ' + when + '\n\n' : '') +
     (message ? 'Their note:\n' + message + '\n\n' : '') +
     siteLine_() +
@@ -181,6 +183,7 @@ function queue_(req, role) {
     const q = parseQueue_(it.waitlist);
     if (q.length >= MAX_QUEUE) return fail_('The waitlist for this item is full.', 'FULL', { item: view_(it, role) });
     entry = { name: name, message: message, slot: cleanSlot_(req.slot, slots), token: Utilities.getUuid(), at: Date.now() };
+    if (req.anon === true) entry.anon = true;
     q.push(entry);
     pos = q.length;
     it.waitlist = JSON.stringify(q);
@@ -463,6 +466,7 @@ function handOn_(it) {
   it.claimedAt = String(Date.now());
   it.claimMessage = next.message || '';
   it.claimToken = next.token; // the waitlist token becomes the claim token, so their browser knows it's theirs
+  it.claimAnon = next.anon ? '1' : '';
   it.pickupSlot = next.slot || '';
   return next.name;
 }
@@ -597,23 +601,27 @@ function writeItem_(it) {
   it._row = r;
 }
 
+// a claimer can hide their name: then only the owner gets it, everyone else gets '' plus anon: true
+const isAnon_ = function (it) { return String(it.claimAnon || '') === '1'; };
+function shownName_(it, role) { return role === 'owner' || !isAnon_(it) ? (it.claimedBy || '') : ''; }
 function view_(it, role) {
   const owner = role === 'owner';
   const v = {
     id: it.id, title: it.title || '', description: it.description || '', category: it.category || '',
     condition: it.condition || '', dimensions: it.dimensions || '', price: it.price || '', room: it.room || '',
     pickup: it.pickup || '', photos: parsePhotos_(it.photos), status: status_(it), quantity: qty_(it.quantity),
-    claimedBy: it.claimedBy || '', claimedAt: num_(it.claimedAt), created: num_(it.created), updated: num_(it.updated),
+    claimedBy: shownName_(it, role), anon: !!it.claimedBy && isAnon_(it), claimedAt: num_(it.claimedAt), created: num_(it.created), updated: num_(it.updated),
     pickupSlot: it.pickupSlot || '', dimLines: parseArrows_(it.dimLines),
     waitlist: parseQueue_(it.waitlist).map(function (e) {
-      return owner ? { name: e.name, at: e.at, message: e.message || '', slot: e.slot || '' } : { name: e.name, at: e.at };
+      const anon = e.anon === true;
+      return owner ? { name: e.name, at: e.at, message: e.message || '', slot: e.slot || '', anon: anon } : { name: anon ? '' : e.name, at: e.at, anon: anon };
     }),
   };
   if (owner) { v.claimMessage = it.claimMessage || ''; v.measured = measured_(it.measured); }
   return v;
 }
 
-function clearClaim_(it) { it.claimedBy = ''; it.claimedAt = ''; it.claimMessage = ''; it.claimToken = ''; it.pickupSlot = ''; }
+function clearClaim_(it) { it.claimedBy = ''; it.claimedAt = ''; it.claimMessage = ''; it.claimToken = ''; it.pickupSlot = ''; it.claimAnon = ''; }
 
 // ---------- helpers ----------
 function roleFor_(key) {
@@ -685,7 +693,7 @@ function notify_(subject, body) {
 /** Run once after pasting: creates the tabs + photo folder and asks for permissions. Safe to run again. */
 function setup() {
   sheet_();
-  header_(sheet_()); // adds any new columns (waitlist, pickupSlot, quantity, measured, dimLines) to an existing sheet
+  header_(sheet_()); // adds any new columns (waitlist, pickupSlot, quantity, measured, dimLines, claimAnon) to an existing sheet
   slotSheet_();
   const folder = photoFolder_();
   const want = SETTINGS.SITE_NAME + ' photos';
